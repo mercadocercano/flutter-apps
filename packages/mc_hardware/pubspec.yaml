@@ -1,0 +1,17 @@
+name: mc_hardware
+description: Ports y adaptadores de hardware comercial - balanza, impresora térmica, scanner.
+version: 0.1.0
+publish_to: 'none'
+
+resolution: workspace
+
+environment:
+  sdk: ^3.11.5
+
+dependencies:
+  mc_application:
+    path: ../mc_application
+
+dev_dependencies:
+  lints: ^6.0.0
+  test: ^1.25.6

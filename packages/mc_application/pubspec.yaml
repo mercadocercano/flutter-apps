@@ -1,0 +1,17 @@
+name: mc_application
+description: Use cases y ports (interfaces) de Mercado Cercano. Orquesta dominio sin conocer infraestructura.
+version: 0.1.0
+publish_to: 'none'
+
+resolution: workspace
+
+environment:
+  sdk: ^3.11.5
+
+dependencies:
+  mc_domain:
+    path: ../mc_domain
+
+dev_dependencies:
+  lints: ^6.0.0
+  test: ^1.25.6

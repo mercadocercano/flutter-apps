@@ -1,0 +1,14 @@
+name: mercado_cercano_workspace
+publish_to: 'none'
+
+environment:
+  sdk: ^3.11.5
+
+workspace:
+  - packages/mc_domain
+  - packages/mc_application
+  - packages/mc_infrastructure
+  - packages/mc_design_system
+  - packages/mc_hardware
+  - apps/mc_pos
+  - apps/mc_consumer

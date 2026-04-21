@@ -1,0 +1,16 @@
+name: mc_domain
+description: Bounded contexts, entities, value objects y business rules de Mercado Cercano. Puro Dart, sin dependencias de Flutter.
+version: 0.1.0
+
+resolution: workspace
+
+environment:
+  sdk: ^3.11.5
+
+dependencies:
+  uuid: ^4.5.1
+  equatable: ^2.0.7
+
+dev_dependencies:
+  lints: ^6.0.0
+  test: ^1.25.6

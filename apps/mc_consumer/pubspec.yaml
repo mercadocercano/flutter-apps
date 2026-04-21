@@ -1,0 +1,30 @@
+name: mc_consumer
+description: Marketplace de Mercado Cercano — comprá en los comercios de tu barrio.
+publish_to: 'none'
+version: 0.1.0+1
+
+resolution: workspace
+
+environment:
+  sdk: ^3.11.5
+
+dependencies:
+  flutter:
+    sdk: flutter
+  mc_domain:
+    path: ../../packages/mc_domain
+  mc_application:
+    path: ../../packages/mc_application
+  mc_infrastructure:
+    path: ../../packages/mc_infrastructure
+  mc_design_system:
+    path: ../../packages/mc_design_system
+  cupertino_icons: ^1.0.8
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+
+flutter:
+  uses-material-design: true

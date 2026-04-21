@@ -1,0 +1,37 @@
+name: mc_pos
+description: POS de Mercado Cercano — punto de venta para comercios de barrio.
+publish_to: 'none'
+version: 0.1.0+1
+
+resolution: workspace
+
+environment:
+  sdk: ^3.11.5
+
+dependencies:
+  flutter:
+    sdk: flutter
+  mc_domain:
+    path: ../../packages/mc_domain
+  mc_application:
+    path: ../../packages/mc_application
+  mc_infrastructure:
+    path: ../../packages/mc_infrastructure
+  mc_design_system:
+    path: ../../packages/mc_design_system
+  mc_hardware:
+    path: ../../packages/mc_hardware
+  flutter_bloc: ^9.1.0
+  flutter_secure_storage: ^9.2.4
+  cupertino_icons: ^1.0.8
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  integration_test:
+    sdk: flutter
+  bloc_test: ^10.0.0
+  flutter_lints: ^6.0.0
+
+flutter:
+  uses-material-design: true
