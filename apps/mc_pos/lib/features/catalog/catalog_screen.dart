@@ -4,6 +4,62 @@ import 'package:mc_application/mc_application.dart';
 import 'package:mc_design_system/mc_design_system.dart';
 import 'package:mc_domain/mc_domain.dart';
 
+// ---------------------------------------------------------------------------
+// SMOKE T033 — paleta hardcodeada por marca.
+// Temporal hasta que T021 aplique el seed en DB y el dato venga del backend.
+// Cuando el modelo Product exponga brandBackgroundHex / brandTextHex /
+// brandFontFamily, esta map se elimina y se construye la paleta directamente
+// desde esos campos.
+// ---------------------------------------------------------------------------
+
+/// Datos visuales de marca para el smoke de T033.
+class _BrandFixture {
+  final String backgroundHex;
+  final String textHex;
+  final String? fontFamily;
+
+  const _BrandFixture({
+    required this.backgroundHex,
+    required this.textHex,
+    this.fontFamily,
+  });
+}
+
+/// Map de nombre de marca (lowercase) a fixture visual.
+/// Las 3 marcas del smoke + el caso de fallback vacío.
+const _kBrandSmokeFixtures = <String, _BrandFixture>{
+  'coca-cola': _BrandFixture(
+    backgroundHex: '#F40009',
+    textHex: '#FFFFFF',
+    fontFamily: 'Lato',
+  ),
+  'quilmes': _BrandFixture(
+    backgroundHex: '#003DA5',
+    textHex: '#FFFFFF',
+    fontFamily: 'Oswald',
+  ),
+  'arcor': _BrandFixture(
+    backgroundHex: '#E2231A',
+    textHex: '#FFFFFF',
+    fontFamily: 'Nunito',
+  ),
+};
+
+/// Construye un [McBrandPalette] desde el fixture de smoke.
+/// Si la marca no está en el map, retorna fallback neutro (backgroundHex: "").
+McBrandPalette _smokeFixturePalette(String? brandName, Brightness brightness) {
+  final fixture = brandName != null
+      ? _kBrandSmokeFixtures[brandName.toLowerCase()]
+      : null;
+
+  return McBrandPalette.fromBrandDto(
+    backgroundHex: fixture?.backgroundHex ?? '',
+    textHex: fixture?.textHex ?? '',
+    fontFamily: fixture?.fontFamily,
+    brightness: brightness,
+  );
+}
+
 /// Pantalla de catálogo — ver, buscar y editar productos del comercio.
 class CatalogScreen extends StatefulWidget {
   const CatalogScreen({super.key});
@@ -194,10 +250,13 @@ class _ProductTile extends StatelessWidget {
       subtitle: Row(
         children: [
           if (product.brandName != null) ...[
-            Text(product.brandName!,
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      fontWeight: FontWeight.w600,
-                    )),
+            McBrandChip(
+              brandName: product.brandName!,
+              palette: _smokeFixturePalette(
+                product.brandName,
+                Theme.of(context).brightness,
+              ),
+            ),
             const SizedBox(width: McSpacing.sm),
           ],
           Text('${activeVariants.length} presentaciones',
