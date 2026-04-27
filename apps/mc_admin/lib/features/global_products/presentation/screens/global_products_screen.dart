@@ -78,7 +78,7 @@ class _GlobalProductsScreenState extends State<GlobalProductsScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        _DataQualityBanner(page: page),
+        _DataQualityBanner(page: page, hasImageFilterActive: _filterHasImage == true),
         _buildFilters(businessTypes),
         Expanded(
           child: page.items.isEmpty
@@ -213,23 +213,31 @@ class _GlobalProductsScreenState extends State<GlobalProductsScreen> {
 
 class _DataQualityBanner extends StatelessWidget {
   final GlobalProductsPage page;
+  final bool hasImageFilterActive;
 
-  const _DataQualityBanner({required this.page});
+  const _DataQualityBanner({required this.page, this.hasImageFilterActive = false});
 
   @override
   Widget build(BuildContext context) {
     final items = page.items;
-    final withImage = items.where((p) => p.imageUrl != null).length;
     final withEan = items.where((p) => p.ean != null).length;
     final withDesc = items.where((p) => p.description != null).length;
     final total = page.totalCount;
+    // Cuando filtro activo, totalCount ES el total con imagen (backend filtra).
+    // Sin filtro, no mostramos el conteo parcial de la página (engañoso).
+    final imageInfo = hasImageFilterActive ? '$total con imagen' : null;
 
     return Container(
       width: double.infinity,
       color: const Color(0xFFFEF9C3),
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
       child: Text(
-        '$total productos · $withImage con imagen · $withEan con EAN · $withDesc con descripcion',
+        [
+          '$total productos',
+          if (imageInfo != null) imageInfo,
+          '$withEan con EAN',
+          '$withDesc con descripcion',
+        ].join(' · '),
         style: const TextStyle(
           fontSize: 13,
           color: Color(0xFF854D0E),
