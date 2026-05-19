@@ -27,10 +27,10 @@ jobs:
         run: dart pub get && dart run melos bootstrap
 
       - name: Analyze
-        run: dart run melos analyze
+        run: dart run melos run analyze
 
       - name: Test
-        run: dart run melos test
+        run: dart run melos run test
 
       - name: Notify Telegram on failure
         if: failure()
