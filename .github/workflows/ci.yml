@@ -33,7 +33,11 @@ jobs:
         run: |
           for pkg in packages/mc_domain packages/mc_application packages/mc_design_system packages/mc_infrastructure packages/mc_hardware; do
             echo "Testing $pkg..."
-            (cd $pkg && dart test) || exit 1
+            result=$(cd $pkg && dart test 2>&1); code=$?
+            echo "$result"
+            if [ $code -ne 0 ] && ! echo "$result" | grep -q "No tests were found"; then
+              exit 1
+            fi
           done
 
       - name: Notify Telegram on failure
