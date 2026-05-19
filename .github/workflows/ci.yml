@@ -22,17 +22,14 @@ jobs:
           channel: stable
           cache: true
 
-      - name: Install Melos
-        run: dart pub global activate melos
-
       - name: Bootstrap workspace
-        run: melos bootstrap
+        run: dart pub get && dart run melos bootstrap
 
       - name: Analyze
-        run: melos analyze
+        run: dart run melos analyze
 
       - name: Test
-        run: melos test
+        run: dart run melos test
 
       - name: Notify Telegram on failure
         if: failure()
@@ -56,11 +53,8 @@ jobs:
           channel: stable
           cache: true
 
-      - name: Install Melos
-        run: dart pub global activate melos
-
       - name: Bootstrap workspace
-        run: melos bootstrap
+        run: dart pub get && dart run melos bootstrap
 
       - name: Build APK (release)
         working-directory: apps/mc_pos
@@ -79,7 +73,7 @@ jobs:
       - name: Notify Telegram on success
         if: success()
         run: |
-          MSG=$(printf '✅ APK BUILD OK: mc_pos\nCommit: ${{ github.sha }}\nRun: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}\n\nDescargá el APK desde Actions → Artifacts')
+          MSG=$(printf '✅ APK BUILD OK: mc_pos\nCommit: ${{ github.sha }}\nRun: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}\n\nDescargá desde Actions → Artifacts')
           curl -s -X POST "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage" \
             -d chat_id="${{ secrets.TELEGRAM_CHAT_ID }}" \
             --data-urlencode text="$MSG"

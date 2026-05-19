@@ -4,6 +4,9 @@ publish_to: 'none'
 environment:
   sdk: ^3.11.5
 
+dev_dependencies:
+  melos: ^7.0.0
+
 workspace:
   - packages/mc_domain
   - packages/mc_application
