@@ -2,6 +2,12 @@
 /// la infraestructura dice CÓMO lo resuelve.
 abstract interface class AuthPort {
   Future<AuthSession> login(String email, String password);
+  Future<AuthSession> register({
+    required String name,
+    required String email,
+    required String password,
+    String? storeName,
+  });
   Future<AuthSession> refreshToken(String refreshToken);
   Future<void> logout();
   Future<AuthSession?> getStoredSession();

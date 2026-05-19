@@ -13,6 +13,9 @@ class Product extends Equatable {
   final String? imageUrl;
   final String? categoryName;
   final String? brandName;
+  final String? brandBg;
+  final String? brandFg;
+  final String? brandFont;
   final ProductStatus status;
   final List<ProductVariant> variants;
   final DateTime createdAt;
@@ -26,6 +29,9 @@ class Product extends Equatable {
     this.imageUrl,
     this.categoryName,
     this.brandName,
+    this.brandBg,
+    this.brandFg,
+    this.brandFont,
     this.status = ProductStatus.draft,
     this.variants = const [],
     required this.createdAt,
@@ -114,6 +120,9 @@ class Product extends Equatable {
     String? imageUrl,
     String? categoryName,
     String? brandName,
+    String? brandBg,
+    String? brandFg,
+    String? brandFont,
     ProductStatus? status,
     List<ProductVariant>? variants,
   }) {
@@ -125,6 +134,9 @@ class Product extends Equatable {
       imageUrl: imageUrl ?? this.imageUrl,
       categoryName: categoryName ?? this.categoryName,
       brandName: brandName ?? this.brandName,
+      brandBg: brandBg ?? this.brandBg,
+      brandFg: brandFg ?? this.brandFg,
+      brandFont: brandFont ?? this.brandFont,
       status: status ?? this.status,
       variants: variants ?? this.variants,
       createdAt: createdAt,

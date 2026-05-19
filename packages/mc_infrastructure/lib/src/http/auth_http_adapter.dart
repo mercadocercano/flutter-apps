@@ -27,7 +27,7 @@ class AuthHttpAdapter implements AuthPort {
       data: {
         'email': email,
         'password': password,
-        'provider': 'local',
+        'provider': 'LOCAL',
       },
     );
 
@@ -45,6 +45,52 @@ class AuthHttpAdapter implements AuthPort {
       expiresAt: DateTime.now().add(Duration(seconds: expiresIn)),
     );
 
+    await _storage.saveSession(session);
+    return session;
+  }
+
+  /// Parsea la respuesta del onboarding-service (estructura diferente al login).
+  /// Lanza excepción descriptiva si success=false.
+  AuthSession _parseOnboardingResponse(Map<String, dynamic> data) {
+    if (data['success'] == false) {
+      final msg = data['message'] as String? ?? 'Error en el registro';
+      throw Exception(msg);
+    }
+    final userData = data['user_data'] as Map<String, dynamic>;
+    final tenantId = data['tenant_id'] as String;
+
+    return AuthSession(
+      accessToken: data['access_token'] as String,
+      refreshToken: data['refresh_token'] as String,
+      userId: userData['id'] as String,
+      tenantId: tenantId,
+      email: userData['email'] as String,
+      role: userData['role'] as String? ?? '',
+      expiresAt: DateTime.now().add(const Duration(hours: 1)),
+    );
+  }
+
+  @override
+  Future<AuthSession> register({
+    required String name,
+    required String email,
+    required String password,
+    String? storeName,
+  }) async {
+    final response = await _dio.post(
+      ApiEndpoints.onboardingRegister,
+      data: {
+        'name': name,
+        'email': email,
+        'password': password,
+        'confirm_password': password,
+        if (storeName != null && storeName.isNotEmpty) 'store_name': storeName,
+      },
+    );
+
+    final session = _parseOnboardingResponse(
+      response.data as Map<String, dynamic>,
+    );
     await _storage.saveSession(session);
     return session;
   }

@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:mc_application/mc_application.dart';
 import 'package:mc_pos/features/auth/auth_cubit.dart';
 import 'package:mc_pos/features/auth/auth_screen.dart';
 
@@ -17,15 +16,12 @@ void main() {
 
     Widget buildApp({bool loginShouldFail = false}) {
       authPort.loginShouldFail = loginShouldFail;
-      bool authenticated = false;
 
       return MaterialApp(
         home: BlocProvider(
           create: (_) => AuthCubit(authPort),
           child: Builder(
-            builder: (context) => AuthScreen(
-              onAuthenticated: (isNew) => authenticated = true,
-            ),
+            builder: (context) => const AuthScreen(),
           ),
         ),
       );

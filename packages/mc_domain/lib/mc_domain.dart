@@ -1,6 +1,4 @@
-/// Bounded contexts, entities, value objects y business rules de Mercado Cercano.
-/// Puro Dart, sin dependencias de Flutter.
-library;
+library mc_domain;
 
 // Common value objects
 export 'src/common/money.dart';
@@ -9,11 +7,13 @@ export 'src/common/sku.dart';
 export 'src/common/customer.dart';
 export 'src/common/payment_method.dart';
 
-// Product bounded context
+// Product domain
 export 'src/product/product.dart';
 export 'src/product/product_variant.dart';
 export 'src/product/product_status.dart';
+export 'src/product/brand.dart';
+export 'src/product/category.dart';
 
-// Sale bounded context
+// Sales domain
 export 'src/sale/pos_sale.dart';
 export 'src/sale/pos_sale_item.dart';

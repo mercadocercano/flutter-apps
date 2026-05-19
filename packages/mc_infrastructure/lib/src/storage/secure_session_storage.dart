@@ -18,18 +18,22 @@ class SecureSessionStorage {
       : _storage = storage ?? const FlutterSecureStorage();
 
   Future<void> saveSession(AuthSession session) async {
-    await Future.wait([
-      _storage.write(key: _keyAccessToken, value: session.accessToken),
-      _storage.write(key: _keyRefreshToken, value: session.refreshToken),
-      _storage.write(key: _keyUserId, value: session.userId),
-      _storage.write(key: _keyTenantId, value: session.tenantId),
-      _storage.write(key: _keyEmail, value: session.email),
-      _storage.write(key: _keyRole, value: session.role),
-      _storage.write(
+    try {
+      // Escrituras secuenciales para compatibilidad web (localStorage no es thread-safe)
+      await _storage.write(key: _keyAccessToken, value: session.accessToken);
+      await _storage.write(key: _keyRefreshToken, value: session.refreshToken);
+      await _storage.write(key: _keyUserId, value: session.userId);
+      await _storage.write(key: _keyTenantId, value: session.tenantId);
+      await _storage.write(key: _keyEmail, value: session.email);
+      await _storage.write(key: _keyRole, value: session.role);
+      await _storage.write(
         key: _keyExpiresAt,
         value: session.expiresAt.toIso8601String(),
-      ),
-    ]);
+      );
+    } catch (e) {
+      // En web, localStorage puede fallar. Sesión sigue válida en memoria.
+      print('[SecureSessionStorage] Warning: no se guardó en storage: $e');
+    }
   }
 
   Future<AuthSession?> loadSession() async {

@@ -36,4 +36,14 @@ abstract final class McColors {
   static const primaryDark = Color(0xFF0818A0);
   static const secondaryLight = Color(0xFFAB5CF0);
   static const secondaryDark = Color(0xFF7C22D0);
+
+  // ─── Tints (fondos suaves) ───
+  static const cobaltTint = Color(0xFFEEF0FB);
+  static const successTint = Color(0xFFDCFCE7);
+  static const warningTint = Color(0xFFFEF3C7);
+  static const errorTint = Color(0xFFFEF2F2);
+
+  // ─── Texto ───
+  /// Texto secundario sobre fondo claro (subtítulos, labels de campo).
+  static const textFg2 = Color(0xFF475569);
 }

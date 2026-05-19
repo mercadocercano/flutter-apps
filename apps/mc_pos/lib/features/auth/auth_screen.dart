@@ -6,9 +6,7 @@ import 'auth_cubit.dart';
 /// Pantalla de auth — login y registro en tabs.
 /// El tenant se obtiene del JWT, no hay selector.
 class AuthScreen extends StatefulWidget {
-  final void Function(bool isNewUser) onAuthenticated;
-
-  const AuthScreen({super.key, required this.onAuthenticated});
+  const AuthScreen({super.key});
 
   @override
   State<AuthScreen> createState() => _AuthScreenState();
@@ -33,6 +31,7 @@ class _AuthScreenState extends State<AuthScreen>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: McColors.cobaltTint,
       body: SafeArea(
         child: Center(
           child: ConstrainedBox(
@@ -42,7 +41,21 @@ class _AuthScreenState extends State<AuthScreen>
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  // Logo
+                  // Header visual
+                  Container(
+                    width: 80,
+                    height: 80,
+                    decoration: BoxDecoration(
+                      color: McColors.primary.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(McSpacing.radiusLg),
+                    ),
+                    child: const Icon(
+                      Icons.storefront,
+                      size: 48,
+                      color: McColors.primary,
+                    ),
+                  ),
+                  const SizedBox(height: McSpacing.md),
                   Text(
                     'Mercado Cercano',
                     style: Theme.of(context).textTheme.headlineMedium?.copyWith(
@@ -57,25 +70,34 @@ class _AuthScreenState extends State<AuthScreen>
                         ),
                   ),
                   const SizedBox(height: McSpacing.xl),
-                  // Tabs
-                  TabBar(
-                    controller: _tabController,
-                    tabs: const [
-                      Tab(text: 'Iniciar sesión'),
-                      Tab(text: 'Crear cuenta'),
-                    ],
-                  ),
-                  const SizedBox(height: McSpacing.lg),
+                  // Card contenedor del form
                   Expanded(
-                    child: TabBarView(
-                      controller: _tabController,
-                      children: [
-                        _LoginForm(onSuccess: () => widget.onAuthenticated(false)),
-                        _RegisterForm(
-                          onSuccess: () => widget.onAuthenticated(true),
-                          onSwitchToLogin: () => _tabController.animateTo(0),
-                        ),
-                      ],
+                    child: McCard(
+                      padding: const EdgeInsets.all(McSpacing.lg),
+                      child: Column(
+                        children: [
+                          TabBar(
+                            controller: _tabController,
+                            tabs: const [
+                              Tab(text: 'Iniciar sesión'),
+                              Tab(text: 'Crear cuenta'),
+                            ],
+                          ),
+                          const SizedBox(height: McSpacing.lg),
+                          Expanded(
+                            child: TabBarView(
+                              controller: _tabController,
+                              children: [
+                                const _LoginForm(),
+                                _RegisterForm(
+                                  onSwitchToLogin: () =>
+                                      _tabController.animateTo(0),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
                 ],
@@ -89,8 +111,7 @@ class _AuthScreenState extends State<AuthScreen>
 }
 
 class _LoginForm extends StatefulWidget {
-  final VoidCallback onSuccess;
-  const _LoginForm({required this.onSuccess});
+  const _LoginForm();
 
   @override
   State<_LoginForm> createState() => _LoginFormState();
@@ -124,13 +145,7 @@ class _LoginFormState extends State<_LoginForm> {
 
   @override
   Widget build(BuildContext context) {
-    return BlocListener<AuthCubit, AuthState>(
-      listener: (context, state) {
-        if (state is AuthSuccess) {
-          widget.onSuccess();
-        }
-      },
-      child: BlocBuilder<AuthCubit, AuthState>(
+    return BlocBuilder<AuthCubit, AuthState>(
         builder: (context, state) {
           final isLoading = state is AuthLoading;
           final error = state is AuthError ? state.message : _localError;
@@ -169,15 +184,13 @@ class _LoginFormState extends State<_LoginForm> {
             ),
           );
         },
-      ),
-    );
+      );
   }
 }
 
 class _RegisterForm extends StatefulWidget {
-  final VoidCallback onSuccess;
   final VoidCallback onSwitchToLogin;
-  const _RegisterForm({required this.onSuccess, required this.onSwitchToLogin});
+  const _RegisterForm({required this.onSwitchToLogin});
 
   @override
   State<_RegisterForm> createState() => _RegisterFormState();
@@ -188,7 +201,6 @@ class _RegisterFormState extends State<_RegisterForm> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   final _storeNameController = TextEditingController();
-  bool _isLoading = false;
   String? _error;
 
   @override
@@ -200,78 +212,94 @@ class _RegisterFormState extends State<_RegisterForm> {
     super.dispose();
   }
 
-  Future<void> _register() async {
-    if (_nameController.text.trim().isEmpty ||
-        _emailController.text.trim().isEmpty ||
-        _passwordController.text.isEmpty ||
-        _storeNameController.text.trim().isEmpty) {
+  void _register() {
+    final name = _nameController.text.trim();
+    final email = _emailController.text.trim();
+    final password = _passwordController.text;
+    final storeName = _storeNameController.text.trim();
+
+    if (name.isEmpty || email.isEmpty || password.isEmpty || storeName.isEmpty) {
       setState(() => _error = 'Completá todos los campos');
       return;
     }
+    if (password.length < 8) {
+      setState(() => _error = 'La contraseña debe tener al menos 8 caracteres');
+      return;
+    }
 
-    setState(() {
-      _isLoading = true;
-      _error = null;
-    });
+    setState(() => _error = null);
 
-    // TODO: conectar con IAM + onboarding-service
-    await Future.delayed(const Duration(seconds: 1));
-
-    setState(() => _isLoading = false);
-    widget.onSuccess();
+    context.read<AuthCubit>().register(
+      name: name,
+      email: email,
+      password: password,
+      storeName: storeName,
+    );
   }
 
   @override
   Widget build(BuildContext context) {
-    return SingleChildScrollView(
-      child: Column(
-        children: [
-          McTextField(
-            label: 'Tu nombre',
-            controller: _nameController,
-            prefixIcon: Icons.person_outline,
+    return BlocConsumer<AuthCubit, AuthState>(
+      listener: (context, state) {
+        if (state is AuthError) {
+          setState(() => _error = state.message);
+        }
+      },
+      builder: (context, state) {
+        final isLoading = state is AuthLoading;
+        final displayError = _error;
+
+        return SingleChildScrollView(
+          child: Column(
+            children: [
+              McTextField(
+                label: 'Tu nombre',
+                controller: _nameController,
+                prefixIcon: Icons.person_outline,
+              ),
+              const SizedBox(height: McSpacing.md),
+              McTextField(
+                label: 'Email',
+                hint: 'tu@email.com',
+                controller: _emailController,
+                keyboardType: TextInputType.emailAddress,
+                prefixIcon: Icons.email_outlined,
+              ),
+              const SizedBox(height: McSpacing.md),
+              McTextField(
+                label: 'Contraseña',
+                controller: _passwordController,
+                obscureText: true,
+                prefixIcon: Icons.lock_outline,
+              ),
+              const SizedBox(height: McSpacing.md),
+              McTextField(
+                label: 'Nombre de tu comercio',
+                hint: 'Ej: Almacén Don Pedro',
+                controller: _storeNameController,
+                prefixIcon: Icons.store_outlined,
+              ),
+              if (displayError != null) ...[
+                const SizedBox(height: McSpacing.sm),
+                Text(displayError, style: TextStyle(color: McColors.error)),
+              ],
+              const SizedBox(height: McSpacing.lg),
+              McButton(
+                label: 'Crear cuenta',
+                expand: true,
+                size: McButtonSize.lg,
+                isLoading: isLoading,
+                onPressed: _register,
+              ),
+              const SizedBox(height: McSpacing.md),
+              TextButton(
+                onPressed: widget.onSwitchToLogin,
+                child: const Text('¿Ya tenés cuenta? Iniciá sesión'),
+              ),
+            ],
           ),
-          const SizedBox(height: McSpacing.md),
-          McTextField(
-            label: 'Email',
-            hint: 'tu@email.com',
-            controller: _emailController,
-            keyboardType: TextInputType.emailAddress,
-            prefixIcon: Icons.email_outlined,
-          ),
-          const SizedBox(height: McSpacing.md),
-          McTextField(
-            label: 'Contraseña',
-            controller: _passwordController,
-            obscureText: true,
-            prefixIcon: Icons.lock_outline,
-          ),
-          const SizedBox(height: McSpacing.md),
-          McTextField(
-            label: 'Nombre de tu comercio',
-            hint: 'Ej: Almacén Don Pedro',
-            controller: _storeNameController,
-            prefixIcon: Icons.store_outlined,
-          ),
-          if (_error != null) ...[
-            const SizedBox(height: McSpacing.sm),
-            Text(_error!, style: TextStyle(color: McColors.error)),
-          ],
-          const SizedBox(height: McSpacing.lg),
-          McButton(
-            label: 'Crear cuenta',
-            expand: true,
-            size: McButtonSize.lg,
-            isLoading: _isLoading,
-            onPressed: _register,
-          ),
-          const SizedBox(height: McSpacing.md),
-          TextButton(
-            onPressed: widget.onSwitchToLogin,
-            child: const Text('¿Ya tenés cuenta? Iniciá sesión'),
-          ),
-        ],
-      ),
+        );
+      },
     );
   }
 }

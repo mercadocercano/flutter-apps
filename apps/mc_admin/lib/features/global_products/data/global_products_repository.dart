@@ -1,4 +1,5 @@
 import '../../../core/api/kong_client.dart';
+import '../domain/models/enrichment_result_model.dart';
 import '../domain/models/global_product_model.dart';
 import 'global_products_api.dart';
 
@@ -31,5 +32,19 @@ class GlobalProductsRepository {
     return GlobalProduct.fromJson(json);
   }
 
+  Future<void> clearProductImage(String id) => _api.clearImageUrl(id);
+
+  /// Rechaza la imagen activa del producto y marca para re-enriquecimiento.
+  Future<void> rejectProductImage(String id) => _api.rejectImage(id);
+
   Future<List<String>> getBusinessTypes() => _api.getBusinessTypes();
+
+  Future<EnrichmentResult> runEnrichment({
+    required List<String> productIds,
+    bool forceReprocess = false,
+  }) =>
+      _api.runEnrichment(
+        productIds: productIds,
+        forceReprocess: forceReprocess,
+      );
 }

@@ -73,6 +73,29 @@ class AuthCubit extends Cubit<AuthState> implements AuthSessionProvider {
     }
   }
 
+  Future<void> register({
+    required String name,
+    required String email,
+    required String password,
+    String? storeName,
+  }) async {
+    debugPrint('[AuthCubit] register: intentando con $email...');
+    emit(const AuthLoading());
+    try {
+      final session = await _authPort.register(
+        name: name,
+        email: email,
+        password: password,
+        storeName: storeName,
+      );
+      debugPrint('[AuthCubit] register: éxito, tenantId=${session.tenantId}');
+      emit(AuthSuccess(session));
+    } catch (e) {
+      debugPrint('[AuthCubit] register: error: $e');
+      emit(AuthError(_parseError(e)));
+    }
+  }
+
   Future<void> logout() async {
     await _authPort.logout();
     emit(const AuthInitial());
@@ -82,9 +105,15 @@ class AuthCubit extends Cubit<AuthState> implements AuthSessionProvider {
     final message = e.toString();
     if (message.contains('401')) return 'Email o contraseña incorrectos';
     if (message.contains('404')) return 'Usuario no encontrado';
+    if (message.contains('409')) return 'Ya existe una cuenta con ese email';
     if (message.contains('429')) return 'Demasiados intentos. Esperá un momento';
-    if (message.contains('SocketException') || message.contains('Connection'))  {
+    if (message.contains('SocketException') || message.contains('Connection')) {
       return 'Error de conexión. Verificá tu red';
+    }
+    // Excepciones con mensajes del servidor (ej: onboarding success=false)
+    if (e is Exception) {
+      final raw = e.toString().replaceFirst('Exception: ', '');
+      if (raw.isNotEmpty && raw != 'Exception') return raw;
     }
     return 'Error inesperado. Intentá de nuevo';
   }

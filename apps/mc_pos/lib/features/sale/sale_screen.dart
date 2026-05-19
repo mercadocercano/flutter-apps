@@ -1,3 +1,4 @@
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:mc_application/mc_application.dart';
@@ -9,6 +10,14 @@ import 'widgets/customer_selector.dart';
 import 'widgets/payment_method_selector.dart';
 import 'widgets/product_search.dart';
 import 'sales_history_screen.dart';
+import '../../widgets/pos/pos_top_bar.dart';
+import '../../widgets/pos/pos_search_bar.dart';
+import '../../widgets/pos/sync_pill.dart';
+import '../../widgets/pos/cart_bar.dart';
+import '../../constants/pos_constants.dart';
+import 'cash_checkout_screen.dart';
+import 'sale_confirmed_screen.dart';
+import '../../widgets/pos/pos_modal.dart';
 
 /// Pantalla principal del POS — flujo de venta.
 /// Layout adaptativo: mobile (1 col) / tablet (2 col).
@@ -35,11 +44,18 @@ class _SaleScreenState extends State<SaleScreen> {
   Customer? _customer;
   PaymentMethod? _paymentMethod;
   bool _initialized = false;
+  late final TextEditingController _searchController;
 
   TenantId get _tenantId {
     final authState = context.read<AuthCubit>().state;
     if (authState is AuthSuccess) return TenantId(authState.session.tenantId);
     return TenantId('unknown');
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _searchController = TextEditingController();
   }
 
   @override
@@ -49,6 +65,12 @@ class _SaleScreenState extends State<SaleScreen> {
       _sale = PosSale.start(tenantId: _tenantId);
       _initialized = true;
     }
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
   }
 
   void _addVariant(ProductVariant variant, String productName) {
@@ -69,9 +91,10 @@ class _SaleScreenState extends State<SaleScreen> {
       await salePort.createSale(_sale);
     } catch (e) {
       if (mounted) {
+        final msg = _extractErrorMessage(e);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Error al guardar venta: $e'),
+            content: Text('Error al guardar venta: $msg'),
             backgroundColor: McColors.error,
           ),
         );
@@ -79,9 +102,42 @@ class _SaleScreenState extends State<SaleScreen> {
     }
   }
 
+  String _extractErrorMessage(Object e) {
+    if (e is DioException) {
+      final data = e.response?.data;
+      if (data is Map) {
+        final serverMsg = data['error'] as String? ?? data['message'] as String?;
+        if (serverMsg != null && serverMsg.isNotEmpty) return serverMsg;
+      }
+      final statusCode = e.response?.statusCode;
+      if (statusCode == 409) return 'Stock insuficiente o no inicializado';
+      if (statusCode == 502) return 'Error de comunicación con el servidor';
+      if (statusCode == null) return 'Sin conexión. Verificá tu internet.';
+    }
+    return 'No pudimos completar la venta. Intentá de nuevo.';
+  }
+
+  void _confirmLogout(BuildContext context) {
+    showPosConfirm(
+      context: context,
+      title: 'Cerrar sesión',
+      message: '¿Seguro que querés cerrar sesión?',
+      confirmLabel: 'Cerrar sesión',
+      confirmColor: McColors.error,
+    ).then((confirmed) {
+      if (confirmed && mounted) context.read<AuthCubit>().logout();
+    });
+  }
+
   void _removeItem(String itemId) {
     setState(() {
       _sale = _sale.removeItem(itemId);
+    });
+  }
+
+  void _clearCart() {
+    setState(() {
+      _sale = PosSale.start(tenantId: _tenantId);
     });
   }
 
@@ -98,82 +154,91 @@ class _SaleScreenState extends State<SaleScreen> {
   void _completeSale() {
     if (_sale.isEmpty) return;
 
-    showModalBottomSheet(
+    final isWide = MediaQuery.sizeOf(context).width >= McSpacing.breakpointTablet;
+    if (isWide) {
+      _showCheckoutSheet();
+    } else {
+      Navigator.of(context).push(MaterialPageRoute(
+        fullscreenDialog: true,
+        builder: (_) => CashCheckoutScreen(
+          sale: _sale,
+          onComplete: _handleCheckoutComplete,
+        ),
+      ));
+    }
+  }
+
+  void _showCheckoutSheet() {
+    showPosDialog<void>(
       context: context,
-      isScrollControlled: true,
-      builder: (_) => _CheckoutSheet(
-        total: _sale.finalAmount,
-        customer: _customer,
-        paymentMethod: _paymentMethod,
-        onComplete: (customer, paymentMethod, amountPaid) {
-          setState(() {
-            _customer = customer;
-            _paymentMethod = paymentMethod;
-            _sale = _sale
-                .setCustomer(customer.id)
-                .pay(amountPaid, paymentMethodId: paymentMethod.id);
-          });
-          Navigator.of(context).pop();
-          _showReceipt();
-        },
+      child: ConstrainedBox(
+        constraints: BoxConstraints(
+          maxWidth: 480,
+          maxHeight: MediaQuery.sizeOf(context).height * 0.9,
+        ),
+        child: _CheckoutSheet(
+          total: _sale.finalAmount,
+          customer: _customer,
+          paymentMethod: _paymentMethod,
+          onComplete: (customer, paymentMethod, amountPaid) {
+            Navigator.of(context).pop();
+            _handleCheckoutComplete(customer, paymentMethod, amountPaid);
+          },
+        ),
       ),
     );
   }
 
-  void _showReceipt() {
-    final change = _sale.change;
-    final methodName = _paymentMethod?.name ?? 'Efectivo';
-    final customerName = _customer?.name ?? 'Consumidor Final';
+  void _handleCheckoutComplete(
+    Customer customer,
+    PaymentMethod paymentMethod,
+    Money amountPaid,
+  ) {
+    setState(() {
+      _customer = customer;
+      _paymentMethod = paymentMethod;
+      _sale = _sale
+          .setCustomer(customer.id)
+          .pay(amountPaid, paymentMethodId: paymentMethod.id);
+    });
 
-    // Registrar venta completada localmente
-    widget.onSaleCompleted(CompletedSale.fromPosSale(
+    final completedSale = CompletedSale.fromPosSale(
       _sale,
-      customerName: customerName,
-      paymentMethodName: methodName,
-    ));
-
-    // Persistir en el backend
+      customerName: customer.name,
+      paymentMethodName: paymentMethod.name,
+    );
+    widget.onSaleCompleted(completedSale);
     _persistSale();
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('Venta #${widget.completedSales.length + 1} completada ($methodName). Vuelto: ${change.formatted}'),
-        backgroundColor: McColors.success,
-        duration: const Duration(seconds: 3),
+    final saleNumber = '${widget.completedSales.length}';
+    final totalAmount = _sale.finalAmount.amount;
+    final receivedAmount = amountPaid.amount;
+    final methodName = paymentMethod.name;
+    final tenantId = _tenantId;
+
+    Navigator.of(context).push(MaterialPageRoute(
+      fullscreenDialog: true,
+      builder: (_) => SaleConfirmedScreen(
+        saleNumber: saleNumber,
+        total: totalAmount,
+        received: receivedAmount,
+        paymentMethodName: methodName,
+        onNewSale: () {
+          Navigator.of(context).popUntil((r) => r.isFirst);
+          setState(() {
+            _sale = PosSale.start(tenantId: tenantId);
+            _customer = null;
+            _paymentMethod = null;
+          });
+        },
       ),
-    );
-    // Nueva venta
-    setState(() {
-      _sale = PosSale.start(tenantId: _tenantId);
-      _customer = null;
-      _paymentMethod = null;
-    });
+    ));
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('MC POS'),
-        backgroundColor: McColors.primary,
-        foregroundColor: Colors.white,
-        actions: [
-          if (widget.completedSales.isNotEmpty)
-            Badge(
-              label: Text('${widget.completedSales.length}'),
-              child: IconButton(
-                icon: const Icon(Icons.receipt_long),
-                onPressed: widget.onShowHistory,
-                tooltip: 'Ventas del día',
-              ),
-            ),
-          IconButton(
-            icon: const Icon(Icons.point_of_sale),
-            onPressed: widget.onShowCashClose,
-            tooltip: 'Cierre de caja',
-          ),
-        ],
-      ),
+      backgroundColor: McColors.backgroundLight,
       body: LayoutBuilder(
         builder: (context, constraints) {
           if (constraints.maxWidth >= McSpacing.breakpointTablet) {
@@ -185,22 +250,89 @@ class _SaleScreenState extends State<SaleScreen> {
     );
   }
 
+  Widget _buildAccountMenu() {
+    return PopupMenuButton<String>(
+      icon: const Icon(Icons.account_circle_outlined, color: McColors.textFg2),
+      tooltip: 'Cuenta',
+      onSelected: (value) {
+        if (value == 'logout') _confirmLogout(context);
+      },
+      itemBuilder: (_) => const [
+        PopupMenuItem(
+          value: 'logout',
+          child: Row(
+            children: [
+              Icon(Icons.logout, size: 20),
+              SizedBox(width: 8),
+              Text('Cerrar sesión'),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
   /// Tablet: 2 columnas — búsqueda izq, carrito der.
   Widget _buildTabletLayout() {
-    return Row(
+    return Column(
       children: [
-        Expanded(
-          flex: 3,
-          child: ProductSearch(onVariantSelected: _addVariant),
+        PosTopBar(
+          title: 'Vender',
+          subtitle: 'Lo que más sale',
+          trailing: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              SyncPill(status: PosSyncStatus.synced),
+              if (widget.completedSales.isNotEmpty)
+                IconButton(
+                  icon: const Icon(Icons.receipt_long),
+                  color: McColors.textFg2,
+                  onPressed: widget.onShowHistory,
+                  tooltip: 'Ventas del día',
+                ),
+              IconButton(
+                icon: const Icon(Icons.point_of_sale),
+                color: McColors.textFg2,
+                onPressed: widget.onShowCashClose,
+                tooltip: 'Cierre de caja',
+              ),
+              _buildAccountMenu(),
+            ],
+          ),
         ),
-        const VerticalDivider(width: 1),
         Expanded(
-          flex: 2,
-          child: CartPanel(
-            sale: _sale,
-            onRemoveItem: _removeItem,
-            onUpdateQuantity: _updateQuantity,
-            onComplete: _completeSale,
+          child: Row(
+            children: [
+              Expanded(
+                flex: 3,
+                child: Column(
+                  children: [
+                    PosSearchBar(
+                      controller: _searchController,
+                      hint: 'Buscar producto o escanear código',
+                    ),
+                    Expanded(
+                      child: ProductSearch(
+                        onVariantSelected: _addVariant,
+                        cartItems: _sale.items,
+                        externalSearchController: _searchController,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const VerticalDivider(width: 1),
+              Expanded(
+                flex: 2,
+                child: CartPanel(
+                  sale: _sale,
+                  onRemoveItem: _removeItem,
+                  onUpdateQuantity: _updateQuantity,
+                  onComplete: _completeSale,
+                  onClear: _clearCart,
+                ),
+              ),
+            ],
           ),
         ),
       ],
@@ -209,17 +341,55 @@ class _SaleScreenState extends State<SaleScreen> {
 
   /// Mobile: 1 columna — búsqueda arriba, carrito como bottom sheet.
   Widget _buildMobileLayout() {
-    return Stack(
+    return Column(
       children: [
-        ProductSearch(onVariantSelected: _addVariant),
-        Positioned(
-          left: 0,
-          right: 0,
-          bottom: 0,
-          child: _MobileCartBar(
-            sale: _sale,
-            onTap: () => _showCartSheet(),
-            onComplete: _completeSale,
+        PosTopBar(
+          title: 'Vender',
+          subtitle: 'Lo que más sale',
+          trailing: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              SyncPill(status: PosSyncStatus.synced),
+              if (widget.completedSales.isNotEmpty)
+                IconButton(
+                  icon: const Icon(Icons.receipt_long),
+                  color: McColors.textFg2,
+                  onPressed: widget.onShowHistory,
+                  tooltip: 'Ventas del día',
+                ),
+              IconButton(
+                icon: const Icon(Icons.point_of_sale),
+                color: McColors.textFg2,
+                onPressed: widget.onShowCashClose,
+                tooltip: 'Cierre de caja',
+              ),
+              _buildAccountMenu(),
+            ],
+          ),
+        ),
+        PosSearchBar(
+          controller: _searchController,
+          hint: 'Buscar producto o escanear código',
+        ),
+        Expanded(
+          child: Stack(
+            children: [
+              ProductSearch(
+                onVariantSelected: _addVariant,
+                cartItems: _sale.items,
+                externalSearchController: _searchController,
+              ),
+              Positioned(
+                left: 0,
+                right: 0,
+                bottom: 0,
+                child: CartBar(
+                  count: _sale.totalItems,
+                  total: _sale.finalAmount.amount,
+                  onTap: _showCartSheet,
+                ),
+              ),
+            ],
           ),
         ),
       ],
@@ -227,10 +397,10 @@ class _SaleScreenState extends State<SaleScreen> {
   }
 
   void _showCartSheet() {
-    showModalBottomSheet(
+    showPosModal(
       context: context,
       isScrollControlled: true,
-      builder: (_) => DraggableScrollableSheet(
+      child: DraggableScrollableSheet(
         initialChildSize: 0.7,
         maxChildSize: 0.9,
         expand: false,
@@ -239,73 +409,8 @@ class _SaleScreenState extends State<SaleScreen> {
           onRemoveItem: _removeItem,
           onUpdateQuantity: _updateQuantity,
           onComplete: _completeSale,
+          onClear: _clearCart,
           scrollController: scrollController,
-        ),
-      ),
-    );
-  }
-}
-
-/// Barra fija en mobile que muestra total y abre el carrito.
-class _MobileCartBar extends StatelessWidget {
-  final PosSale sale;
-  final VoidCallback onTap;
-  final VoidCallback onComplete;
-
-  const _MobileCartBar({
-    required this.sale,
-    required this.onTap,
-    required this.onComplete,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    if (sale.isEmpty) return const SizedBox.shrink();
-
-    return Container(
-      padding: const EdgeInsets.all(McSpacing.md),
-      decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surface,
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.1),
-            blurRadius: 8,
-            offset: const Offset(0, -2),
-          ),
-        ],
-      ),
-      child: SafeArea(
-        top: false,
-        child: Row(
-          children: [
-            Expanded(
-              child: GestureDetector(
-                onTap: onTap,
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      '${sale.totalItems} items',
-                      style: Theme.of(context).textTheme.bodySmall,
-                    ),
-                    Text(
-                      sale.finalAmount.formatted,
-                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                            fontWeight: FontWeight.bold,
-                          ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-            McButton(
-              label: 'Cobrar',
-              icon: Icons.payment,
-              size: McButtonSize.lg,
-              onPressed: onComplete,
-            ),
-          ],
         ),
       ),
     );
@@ -396,19 +501,6 @@ class _CheckoutSheetState extends State<_CheckoutSheet> {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Handle
-              Center(
-                child: Container(
-                  width: 40,
-                  height: 4,
-                  decoration: BoxDecoration(
-                    color: Colors.grey[300],
-                    borderRadius: BorderRadius.circular(2),
-                  ),
-                ),
-              ),
-              const SizedBox(height: McSpacing.base),
-
               // Total
               Center(
                 child: Column(

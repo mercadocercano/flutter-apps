@@ -44,6 +44,14 @@ abstract final class McTheme {
           ),
           elevation: 1,
         ),
+        dialogTheme: DialogThemeData(
+          backgroundColor: McColors.backgroundLight,
+          elevation: 8,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+            side: BorderSide(color: McColors.primary, width: 2),
+          ),
+        ),
       );
 
   static ThemeData get dark => ThemeData(
@@ -83,6 +91,14 @@ abstract final class McTheme {
             borderRadius: BorderRadius.circular(McSpacing.radiusLg),
           ),
           elevation: 2,
+        ),
+        dialogTheme: DialogThemeData(
+          backgroundColor: McColors.surfaceDark,
+          elevation: 8,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+            side: BorderSide(color: McColors.primaryLight, width: 2),
+          ),
         ),
       );
 }

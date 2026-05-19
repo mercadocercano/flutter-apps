@@ -4,6 +4,9 @@ library;
 // Ports
 export 'src/ports/auth_port.dart';
 export 'src/ports/catalog_port.dart';
+export 'src/ports/category_port.dart';
+export 'src/ports/brand_port.dart';
+export 'src/ports/quickstart_port.dart';
 export 'src/ports/sale_port.dart';
 export 'src/ports/stock_port.dart';
 export 'src/ports/hardware_port.dart';

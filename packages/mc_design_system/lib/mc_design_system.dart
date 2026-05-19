@@ -12,6 +12,9 @@ export 'src/theme/mc_theme.dart';
 export 'src/widgets/mc_button.dart';
 export 'src/widgets/mc_text_field.dart';
 export 'src/widgets/mc_card.dart';
+export 'src/widgets/mc_badge.dart';
+export 'src/widgets/product_category_icon.dart';
+export 'src/widgets/product_image_widget.dart';
 
 // Brand
 export 'src/brand/mc_brand_palette.dart';

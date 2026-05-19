@@ -1,7 +1,14 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:mc_design_system/mc_design_system.dart';
 import 'package:mc_domain/mc_domain.dart';
 import 'sales_history_screen.dart';
+import '../../widgets/pos/pos_top_bar.dart';
+import '../../widgets/pos/denomination_row.dart';
+import '../../widgets/pos/difference_banner.dart';
+import '../../widgets/pos/product_card_pos.dart' show fmtAR;
+import '../../constants/pos_constants.dart';
+import '../../widgets/pos/pos_modal.dart';
 
 /// Cierre de caja / arqueo — resumen por medio de pago + diferencia.
 class CashRegisterCloseScreen extends StatefulWidget {
@@ -21,6 +28,8 @@ class CashRegisterCloseScreen extends StatefulWidget {
 
 class _CashRegisterCloseScreenState extends State<CashRegisterCloseScreen> {
   final _cashCountController = TextEditingController();
+  // Cantidades por denominación: índice = PosConstants.denominations
+  late List<int> _denomQtys;
 
   Map<String, Money> get _salesByMethod {
     final map = <String, Money>{};
@@ -34,10 +43,22 @@ class _CashRegisterCloseScreenState extends State<CashRegisterCloseScreen> {
     return map;
   }
 
-  Money get _totalSales =>
-      widget.sales.fold(Money.zero, (sum, s) => sum + s.finalAmount);
 
   Money get _cashExpected => _salesByMethod['Efectivo'] ?? Money.zero;
+
+  @override
+  void initState() {
+    super.initState();
+    _denomQtys = List.filled(PosConstants.denominations.length, 0);
+  }
+
+  double get _countedTotal {
+    double total = 0;
+    for (int i = 0; i < PosConstants.denominations.length; i++) {
+      total += PosConstants.denominations[i] * _denomQtys[i];
+    }
+    return total;
+  }
 
   @override
   void dispose() {
@@ -46,214 +67,168 @@ class _CashRegisterCloseScreenState extends State<CashRegisterCloseScreen> {
   }
 
   void _confirmClose() {
-    showDialog(
+    showPosConfirm(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('¿Cerrar la caja?'),
-        content: const Text(
-          'Se va a registrar el cierre. Las ventas del día quedan guardadas.',
-        ),
-        actions: [
-          McButton(
-            label: 'Cancelar',
-            variant: McButtonVariant.ghost,
-            onPressed: () => Navigator.of(ctx).pop(),
-          ),
-          McButton(
-            label: 'Cerrar caja',
-            variant: McButtonVariant.destructive,
-            onPressed: () {
-              Navigator.of(ctx).pop();
-              widget.onClose();
-            },
-          ),
-        ],
-      ),
-    );
+      title: '¿Cerrar la caja?',
+      message: 'Se va a registrar el cierre. Las ventas del día quedan guardadas.',
+      confirmLabel: 'Cerrar caja',
+      confirmColor: McColors.error,
+    ).then((confirmed) {
+      if (confirmed && mounted) widget.onClose();
+    });
   }
 
   @override
   Widget build(BuildContext context) {
-    final cashCounted = double.tryParse(_cashCountController.text) ?? 0;
-    final difference = Money.ars(cashCounted) - _cashExpected;
+    final now = DateTime.now();
+    final dateLabel =
+        '${now.day}/${now.month}/${now.year}';
+    final counted = _countedTotal;
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Cierre de caja'),
-        backgroundColor: McColors.primary,
-        foregroundColor: Colors.white,
-      ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(McSpacing.lg),
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 600),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Resumen general
-              McCard(
-                child: Column(
-                  children: [
-                    _SummaryRow(
-                      'Total del día',
-                      _totalSales.formatted,
-                      isBold: true,
-                      isLarge: true,
-                    ),
-                    const Divider(),
-                    _SummaryRow(
-                      'Cantidad de ventas',
-                      '${widget.sales.length}',
-                    ),
-                    _SummaryRow(
-                      'Items vendidos',
-                      '${widget.sales.fold(0, (sum, s) => sum + s.totalItems)}',
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: McSpacing.lg),
-
-              // Desglose por medio de pago
-              Text('Desglose por medio de pago',
-                  style: Theme.of(context).textTheme.titleMedium),
-              const SizedBox(height: McSpacing.sm),
-              McCard(
-                child: Column(
-                  children: _salesByMethod.entries.map((entry) {
-                    final count = widget.sales
-                        .where((s) => s.paymentMethodName == entry.key)
-                        .length;
-                    return _SummaryRow(
-                      '${entry.key} ($count ventas)',
-                      entry.value.formatted,
-                    );
-                  }).toList(),
-                ),
-              ),
-              const SizedBox(height: McSpacing.lg),
-
-              // Arqueo de efectivo
-              Text('Arqueo de efectivo',
-                  style: Theme.of(context).textTheme.titleMedium),
-              const SizedBox(height: McSpacing.sm),
-              McCard(
-                child: Column(
-                  children: [
-                    _SummaryRow(
-                      'Efectivo esperado',
-                      _cashExpected.formatted,
-                    ),
-                    const SizedBox(height: McSpacing.md),
-                    McTextField(
-                      label: 'Efectivo contado en caja',
-                      controller: _cashCountController,
-                      keyboardType: TextInputType.number,
-                      prefixIcon: Icons.calculate,
-                      onChanged: (_) => setState(() {}),
-                    ),
-                    if (_cashCountController.text.isNotEmpty) ...[
-                      const SizedBox(height: McSpacing.md),
-                      Container(
-                        width: double.infinity,
-                        padding: const EdgeInsets.all(McSpacing.md),
-                        decoration: BoxDecoration(
-                          color: difference.cents == 0
-                              ? McColors.success.withValues(alpha: 0.1)
-                              : McColors.warning.withValues(alpha: 0.1),
-                          borderRadius:
-                              BorderRadius.circular(McSpacing.radiusMd),
-                        ),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Text(
-                              difference.cents == 0
-                                  ? 'Cuadra perfecto'
-                                  : difference.isPositive
-                                      ? 'Sobrante'
-                                      : 'Faltante',
-                              style: TextStyle(
-                                fontWeight: FontWeight.w600,
-                                color: difference.cents == 0
-                                    ? McColors.success
-                                    : McColors.warning,
-                              ),
-                            ),
-                            Text(
-                              difference.cents == 0
-                                  ? '\$0,00'
-                                  : difference.formatted,
-                              style: Theme.of(context)
-                                  .textTheme
-                                  .titleLarge
-                                  ?.copyWith(
-                                    fontWeight: FontWeight.bold,
-                                    color: difference.cents == 0
-                                        ? McColors.success
-                                        : McColors.warning,
-                                  ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ],
-                ),
-              ),
-              const SizedBox(height: McSpacing.xl),
-
-              // Botón cerrar
-              McButton(
-                label: 'Cerrar caja',
-                icon: Icons.lock,
-                size: McButtonSize.lg,
-                expand: true,
-                variant: McButtonVariant.destructive,
-                onPressed: widget.sales.isEmpty ? null : _confirmClose,
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _SummaryRow extends StatelessWidget {
-  final String label;
-  final String value;
-  final bool isBold;
-  final bool isLarge;
-
-  const _SummaryRow(
-    this.label,
-    this.value, {
-    this.isBold = false,
-    this.isLarge = false,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: McSpacing.xs),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      backgroundColor: McColors.backgroundLight,
+      body: Column(
         children: [
-          Text(
-            label,
-            style: isBold
-                ? Theme.of(context).textTheme.titleMedium
-                : Theme.of(context).textTheme.bodyMedium,
+          PosTopBar(
+            title: 'Cierre de caja',
+            subtitle: 'Hoy · $dateLabel',
+            leading: IconButton(
+              icon: const Icon(Icons.arrow_back, color: McColors.textFg2),
+              onPressed: () => Navigator.of(context).pop(),
+            ),
           ),
-          Text(
-            value,
-            style: (isLarge
-                    ? Theme.of(context).textTheme.headlineSmall
-                    : Theme.of(context).textTheme.bodyMedium)
-                ?.copyWith(
-              fontWeight: isBold ? FontWeight.bold : FontWeight.w500,
-              color: isLarge ? McColors.success : null,
+          Expanded(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.all(McSpacing.base),
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 600),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Banner sistema
+                    Container(
+                      decoration: BoxDecoration(
+                        color: McColors.cobaltTint,
+                        border: Border.all(color: McColors.primary),
+                        borderRadius:
+                            BorderRadius.circular(McSpacing.radiusLg),
+                      ),
+                      padding: const EdgeInsets.all(McSpacing.base),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'SEGÚN EL SISTEMA (EFECTIVO)',
+                            style: GoogleFonts.inter(
+                              fontSize: 10,
+                              fontWeight: FontWeight.w600,
+                              color: McColors.primary,
+                              letterSpacing: 0.5,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            fmtAR(_cashExpected.amount),
+                            style: McTypography.mono(28, color: McColors.primary),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            '${widget.sales.length} ventas en efectivo',
+                            style: GoogleFonts.inter(
+                              fontSize: 11,
+                              color: McColors.textFg2,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: McSpacing.lg),
+
+                    // Denominaciones
+                    Text(
+                      'Conteo por denominación',
+                      style: GoogleFonts.poppins(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                        color: McColors.foregroundLight,
+                      ),
+                    ),
+                    const SizedBox(height: McSpacing.sm),
+                    Container(
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        border: Border.all(color: McColors.borderLight),
+                        borderRadius:
+                            BorderRadius.circular(McSpacing.radiusLg),
+                      ),
+                      padding: const EdgeInsets.all(McSpacing.base),
+                      child: Column(
+                        children: PosConstants.denominations
+                            .asMap()
+                            .entries
+                            .map((e) => DenominationRow(
+                                  denomination: e.value,
+                                  qty: _denomQtys[e.key],
+                                  onQtyChanged: (qty) => setState(
+                                      () => _denomQtys[e.key] = qty),
+                                ))
+                            .toList(),
+                      ),
+                    ),
+                    const SizedBox(height: McSpacing.lg),
+
+                    // Banner diferencia
+                    DifferenceBanner(
+                      system: _cashExpected.amount,
+                      counted: counted,
+                    ),
+                    const SizedBox(height: McSpacing.xl),
+                  ],
+                ),
+              ),
+            ),
+          ),
+
+          // Footer
+          Container(
+            padding: const EdgeInsets.fromLTRB(
+              McSpacing.base,
+              McSpacing.md,
+              McSpacing.base,
+              20,
+            ),
+            decoration: const BoxDecoration(
+              color: Colors.white,
+              border: Border(top: BorderSide(color: McColors.borderLight)),
+            ),
+            child: Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton(
+                    onPressed: () => Navigator.of(context).pop(),
+                    child: const Text('Cancelar'),
+                  ),
+                ),
+                const SizedBox(width: McSpacing.sm),
+                Expanded(
+                  flex: 2,
+                  child: ElevatedButton.icon(
+                    onPressed:
+                        widget.sales.isEmpty ? null : _confirmClose,
+                    icon: const Icon(Icons.lock, size: 18),
+                    label: const Text('Cerrar caja'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: McColors.success,
+                      foregroundColor: Colors.white,
+                      minimumSize: const Size(0, 48),
+                      shape: RoundedRectangleBorder(
+                        borderRadius:
+                            BorderRadius.circular(McSpacing.radiusLg),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
             ),
           ),
         ],
@@ -261,3 +236,4 @@ class _SummaryRow extends StatelessWidget {
     );
   }
 }
+

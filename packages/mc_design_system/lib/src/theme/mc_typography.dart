@@ -22,6 +22,10 @@ abstract final class McTypography {
         labelSmall: _inter(11, FontWeight.w500),
       );
 
+  /// Tipografía mono para precios, totales y cantidades numéricas.
+  static TextStyle mono(double size, {FontWeight weight = FontWeight.w700, Color? color}) =>
+      GoogleFonts.jetBrainsMono(fontSize: size, fontWeight: weight, color: color, letterSpacing: -0.5);
+
   static TextStyle _poppins(double size, FontWeight weight) =>
       GoogleFonts.poppins(fontSize: size, fontWeight: weight);
 

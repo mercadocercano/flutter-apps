@@ -41,6 +41,10 @@ class McHttpClient {
   }) =>
       _dio.put(path, data: data);
 
+  /// PATCH con body JSON opcional.
+  Future<Response<T>> patch<T>(String path, {Object? data}) =>
+      _dio.patch(path, data: data);
+
   /// DELETE.
   Future<Response<T>> delete<T>(String path) => _dio.delete(path);
 }

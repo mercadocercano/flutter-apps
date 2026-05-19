@@ -8,4 +8,11 @@ abstract interface class StockPort {
     required String entryType,
     String? notes,
   });
+
+  /// Registra la carga inicial de stock de un producto (desde quickstart).
+  Future<void> createStockEntry({
+    required String variantSku,
+    required String productName,
+    required int quantity,
+  });
 }

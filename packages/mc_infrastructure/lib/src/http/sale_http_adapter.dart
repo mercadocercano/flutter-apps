@@ -14,7 +14,9 @@ class SaleHttpAdapter implements SalePort {
     final response = await _client.post(
       ApiEndpoints.posSales,
       data: {
-        'customer_id': sale.customerId,
+        // null = venta anónima (Consumidor Final) — backend acepta *uuid.UUID opcional
+        if (sale.customerId != null && sale.customerId != 'default')
+          'customer_id': sale.customerId,
         'items': sale.items
             .map((item) => {
                   'sku': item.sku,
@@ -61,7 +63,7 @@ class SaleHttpAdapter implements SalePort {
   }
 
   PosSale _mapSale(Map<String, dynamic> json) {
-    final items = (json['items'] as List? ?? []).map((item) {
+    var items = (json['items'] as List? ?? []).map((item) {
       return PosSaleItem(
         id: item['item_id'] ?? '',
         sku: item['sku'] ?? '',
@@ -73,9 +75,29 @@ class SaleHttpAdapter implements SalePort {
       );
     }).toList();
 
+    // El endpoint LIST no devuelve items[], solo totales.
+    // Crear item sintético para que finalAmount = total_amount - discount_amount sea correcto.
+    if (items.isEmpty && json['total_amount'] != null) {
+      final totalAmount =
+          double.tryParse(json['total_amount']?.toString() ?? '0') ?? 0;
+      if (totalAmount > 0) {
+        items = [
+          PosSaleItem(
+            id: '',
+            sku: '',
+            productName: '',
+            quantity: 1,
+            unitPrice: Money.ars(totalAmount),
+          ),
+        ];
+      }
+    }
+
+    final tenantId = json['tenant_id'] as String?;
+
     return PosSale(
       id: json['pos_sale_id'] ?? json['id'] ?? '',
-      tenantId: TenantId(json['tenant_id'] ?? ''),
+      tenantId: TenantId(tenantId?.isNotEmpty == true ? tenantId! : 'unknown'),
       customerId: json['customer_id']?.toString(),
       paymentMethodId: json['payment_method_id']?.toString(),
       items: items,

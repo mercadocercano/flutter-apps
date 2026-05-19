@@ -98,18 +98,19 @@ class _PaymentChip extends StatelessWidget {
   }
 }
 
-/// Medios de pago demo — se reemplazarán con PaymentMethodPort.
+/// Medios de pago globales — UUIDs fijos seeded en payment_method_db.
+/// Cuando payment-method-service esté en stack completo, reemplazar con carga dinámica.
 final _demoMethods = [
   const PaymentMethod(
-      id: 'pm-1', code: 'cash', name: 'Efectivo', isGlobal: true),
+      id: '00000001-0000-0000-0000-000000000001', code: 'cash', name: 'Efectivo', isGlobal: true),
   const PaymentMethod(
-      id: 'pm-2', code: 'debit_card', name: 'Débito', isGlobal: true),
+      id: '00000001-0000-0000-0000-000000000002', code: 'debit_card', name: 'Débito', isGlobal: true),
   const PaymentMethod(
-      id: 'pm-3', code: 'credit_card', name: 'Crédito', isGlobal: true),
+      id: '00000001-0000-0000-0000-000000000003', code: 'credit_card', name: 'Crédito', isGlobal: true),
   const PaymentMethod(
-      id: 'pm-4', code: 'qr', name: 'QR', isGlobal: true),
+      id: '00000001-0000-0000-0000-000000000004', code: 'qr', name: 'QR', isGlobal: true),
   const PaymentMethod(
-      id: 'pm-5', code: 'transfer', name: 'Transferencia', isGlobal: true),
+      id: '00000001-0000-0000-0000-000000000005', code: 'transfer', name: 'Transferencia', isGlobal: true),
   const PaymentMethod(
-      id: 'pm-6', code: 'mercadopago', name: 'MercadoPago', isGlobal: true),
+      id: '00000001-0000-0000-0000-000000000006', code: 'mercadopago', name: 'MercadoPago', isGlobal: true),
 ];

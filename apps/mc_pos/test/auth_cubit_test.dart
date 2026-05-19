@@ -50,6 +50,26 @@ class FakeAuthPort implements AuthPort {
   Future<void> storeSession(AuthSession session) async {
     storedSession = session;
   }
+
+  @override
+  Future<AuthSession> register({
+    required String name,
+    required String email,
+    required String password,
+    String? storeName,
+  }) async {
+    final session = AuthSession(
+      accessToken: 'test-access-token',
+      refreshToken: 'test-refresh-token',
+      userId: 'user-123',
+      tenantId: 'tenant-456',
+      email: email,
+      role: 'owner',
+      expiresAt: DateTime.now().add(const Duration(hours: 1)),
+    );
+    storedSession = session;
+    return session;
+  }
 }
 
 void main() {

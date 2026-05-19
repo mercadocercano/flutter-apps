@@ -4,7 +4,9 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:mc_application/mc_application.dart';
 import 'package:mc_design_system/mc_design_system.dart';
 import 'package:mc_domain/mc_domain.dart';
-import '../../quickstart/brand_badge.dart';
+import '../../../widgets/pos/product_card_pos.dart';
+import '../../../widgets/pos/section_header.dart';
+import '../../../widgets/pos/pos_modal.dart';
 
 /// Búsqueda de productos para el POS — misma UI que CatalogScreen.
 /// Grid con buscador y chips de categoría. Tap → agrega variante al carrito.
@@ -15,10 +17,15 @@ class ProductSearch extends StatefulWidget {
   /// Items actuales del carrito — para mostrar badge de cantidad en las cards.
   final List<PosSaleItem> cartItems;
 
+  /// Controlador externo de búsqueda (viene de PosSearchBar en SaleScreen).
+  /// Si se provee, el buscador interno queda oculto.
+  final TextEditingController? externalSearchController;
+
   const ProductSearch({
     super.key,
     required this.onVariantSelected,
     this.cartItems = const [],
+    this.externalSearchController,
   });
 
   @override
@@ -30,6 +37,7 @@ class _ProductSearchState extends State<ProductSearch> {
 
   final _searchController = TextEditingController();
   final _scrollCtrl = ScrollController();
+  final _categoryScrollCtrl = ScrollController();
   Timer? _debounce;
 
   List<Product> _products = [];
@@ -41,11 +49,49 @@ class _ProductSearchState extends State<ProductSearch> {
   String? _selectedCategory;
   String _query = '';
 
+  bool get _hasExternalSearch => widget.externalSearchController != null;
+
+  bool _canScrollCatsLeft = false;
+  bool _canScrollCatsRight = true; // asume que hay overflow hasta verificar
+
+  void _onCategoryScroll() {
+    final pos = _categoryScrollCtrl.position;
+    setState(() {
+      _canScrollCatsLeft = pos.pixels > 4;
+      _canScrollCatsRight = pos.pixels < pos.maxScrollExtent - 4;
+    });
+  }
+
+  void _scrollCats(double delta) {
+    _categoryScrollCtrl.animateTo(
+      (_categoryScrollCtrl.offset + delta).clamp(
+        0,
+        _categoryScrollCtrl.position.maxScrollExtent,
+      ),
+      duration: const Duration(milliseconds: 200),
+      curve: Curves.easeOut,
+    );
+  }
+
   @override
   void initState() {
     super.initState();
     _scrollCtrl.addListener(_onScroll);
+    _categoryScrollCtrl.addListener(_onCategoryScroll);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      // Segundo frame: layout ya completo, leer maxScrollExtent real
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (_categoryScrollCtrl.hasClients) _onCategoryScroll();
+      });
+    });
+    if (_hasExternalSearch) {
+      widget.externalSearchController!.addListener(_onExternalSearchChanged);
+    }
     _loadPage(1);
+  }
+
+  void _onExternalSearchChanged() {
+    _onSearchChanged(widget.externalSearchController!.text);
   }
 
   @override
@@ -53,6 +99,10 @@ class _ProductSearchState extends State<ProductSearch> {
     _debounce?.cancel();
     _searchController.dispose();
     _scrollCtrl.dispose();
+    _categoryScrollCtrl.dispose();
+    if (_hasExternalSearch) {
+      widget.externalSearchController!.removeListener(_onExternalSearchChanged);
+    }
     super.dispose();
   }
 
@@ -127,24 +177,25 @@ class _ProductSearchState extends State<ProductSearch> {
   }
 
   void _showVariantPicker(Product product, List<ProductVariant> variants) {
-    showModalBottomSheet(
+    showPosModal(
       context: context,
-      builder: (_) => SafeArea(
+      child: SafeArea(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Padding(
-              padding: const EdgeInsets.all(McSpacing.md),
+              padding: const EdgeInsets.fromLTRB(McSpacing.md, McSpacing.sm, McSpacing.md, McSpacing.sm),
               child: Text(product.name,
                   style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
             ),
-            const Divider(height: 1),
+            Divider(height: 1, color: McColors.borderLight),
             ...variants.map((v) => ListTile(
+                  tileColor: Colors.transparent,
                   title: Text(v.name),
                   subtitle: v.sku != null ? Text(v.sku!.value) : null,
                   trailing: Text(v.price.formatted,
-                      style: TextStyle(
+                      style: const TextStyle(
                           fontWeight: FontWeight.bold,
                           color: McColors.primary)),
                   onTap: () {
@@ -152,7 +203,7 @@ class _ProductSearchState extends State<ProductSearch> {
                     widget.onVariantSelected(v, product.name);
                   },
                 )),
-            const SizedBox(height: McSpacing.sm),
+            const SizedBox(height: McSpacing.md),
           ],
         ),
       ),
@@ -165,61 +216,73 @@ class _ProductSearchState extends State<ProductSearch> {
 
     return Column(
       children: [
-        // ─── Buscador ───
-        Padding(
-          padding: const EdgeInsets.all(McSpacing.md),
-          child: McTextField(
-            hint: 'Buscar producto o escanear código...',
-            controller: _searchController,
-            prefixIcon: Icons.search,
-            onChanged: _onSearchChanged,
-            suffix: IconButton(
-              icon: const Icon(Icons.qr_code_scanner),
-              onPressed: () {
-                // TODO: abrir scanner de cámara
-              },
-            ),
-          ),
-        ),
-
-        // ─── Chips de categoría ───
-        if (_categories.isNotEmpty)
-          SizedBox(
-            height: 40,
-            child: ListView(
-              scrollDirection: Axis.horizontal,
-              padding: const EdgeInsets.symmetric(horizontal: McSpacing.md),
-              children: [
-                _CategoryChip(
-                  label: 'Todos',
-                  isSelected: _selectedCategory == null,
-                  onTap: () => setState(() => _selectedCategory = null),
-                ),
-                ..._categories.map((cat) => _CategoryChip(
-                      label: cat,
-                      isSelected: _selectedCategory == cat,
-                      onTap: () => setState(() => _selectedCategory = cat),
-                    )),
-              ],
-            ),
-          ),
-
-        if (!_isLoading) ...[
-          const SizedBox(height: McSpacing.xs),
+        // ─── Buscador interno (solo si no hay externo) ───
+        if (!_hasExternalSearch)
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: McSpacing.md),
-            child: Align(
-              alignment: Alignment.centerLeft,
-              child: Text(
-                '${filtered.length} producto${filtered.length == 1 ? '' : 's'}',
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: McColors.textSecondaryLight,
-                    ),
+            padding: const EdgeInsets.all(McSpacing.md),
+            child: McTextField(
+              hint: 'Buscar producto o escanear código...',
+              controller: _searchController,
+              prefixIcon: Icons.search,
+              onChanged: _onSearchChanged,
+              suffix: IconButton(
+                icon: const Icon(Icons.qr_code_scanner),
+                onPressed: () {},
               ),
             ),
           ),
-          const SizedBox(height: McSpacing.xs),
-        ],
+
+        // ─── Chips de categoría con flechas de navegación ───
+        if (_categories.isNotEmpty)
+          SizedBox(
+            height: 48,
+            child: Row(
+              children: [
+                // Flecha izquierda
+                AnimatedOpacity(
+                  opacity: _canScrollCatsLeft ? 1.0 : 0.0,
+                  duration: const Duration(milliseconds: 150),
+                  child: _ArrowBtn(
+                    icon: Icons.chevron_left,
+                    onTap: _canScrollCatsLeft ? () => _scrollCats(-200) : null,
+                  ),
+                ),
+                // Lista de chips
+                Expanded(
+                  child: ListView(
+                    controller: _categoryScrollCtrl,
+                    scrollDirection: Axis.horizontal,
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: McSpacing.sm,
+                      vertical: 4,
+                    ),
+                    children: [
+                      _CategoryChip(
+                        label: 'Todos',
+                        isSelected: _selectedCategory == null,
+                        onTap: () => setState(() => _selectedCategory = null),
+                      ),
+                      ..._categories.map((cat) => _CategoryChip(
+                            label: cat,
+                            isSelected: _selectedCategory == cat,
+                            onTap: () =>
+                                setState(() => _selectedCategory = cat),
+                          )),
+                    ],
+                  ),
+                ),
+                // Flecha derecha
+                AnimatedOpacity(
+                  opacity: _canScrollCatsRight ? 1.0 : 0.0,
+                  duration: const Duration(milliseconds: 150),
+                  child: _ArrowBtn(
+                    icon: Icons.chevron_right,
+                    onTap: _canScrollCatsRight ? () => _scrollCats(200) : null,
+                  ),
+                ),
+              ],
+            ),
+          ),
 
         // ─── Contenido ───
         if (_isLoading)
@@ -253,29 +316,68 @@ class _ProductSearchState extends State<ProductSearch> {
             child: CustomScrollView(
               controller: _scrollCtrl,
               slivers: [
+                // Encabezado de sección
+                if (_query.isEmpty)
+                  SliverToBoxAdapter(
+                    child: SectionHeader(
+                      'Lo que más sale',
+                      subtitle: 'Tus productos más vendidos',
+                    ),
+                  ),
+
                 SliverPadding(
                   padding: const EdgeInsets.symmetric(horizontal: McSpacing.md),
-                  sliver: SliverGrid(
-                    delegate: SliverChildBuilderDelegate(
-                      (_, i) {
-                        final product = filtered[i];
-                        final cartQty = widget.cartItems
-                            .where((item) => item.productName.startsWith(product.name))
-                            .fold(0, (sum, item) => sum + item.quantity);
-                        return _ProductCard(
-                          product: product,
-                          cartQty: cartQty,
-                          onTap: () => _onProductTap(product),
-                        );
-                      },
-                      childCount: filtered.length,
-                    ),
-                    gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
-                      maxCrossAxisExtent: 220,
-                      mainAxisExtent: 180,
-                      crossAxisSpacing: McSpacing.sm,
-                      mainAxisSpacing: McSpacing.sm,
-                    ),
+                  sliver: SliverLayoutBuilder(
+                    builder: (_, constraints) {
+                      final width = constraints.crossAxisExtent;
+                      final cols = width < 400
+                          ? 2
+                          : width < 700
+                              ? 3
+                              : width < 1000
+                                  ? 4
+                                  : 5;
+                      return SliverGrid(
+                        delegate: SliverChildBuilderDelegate(
+                          (_, i) {
+                            final product = filtered[i];
+                            final cartQty = widget.cartItems
+                                .where((item) =>
+                                    item.productName.startsWith(product.name))
+                                .fold(0, (sum, item) => sum + item.quantity);
+                            final activeVariants = product.variants
+                                .where((v) => v.isActive)
+                                .toList();
+                            final defaultVariant = activeVariants
+                                    .where((v) => v.isDefault)
+                                    .firstOrNull ??
+                                activeVariants.firstOrNull;
+
+                            return ProductCardPos(
+                              productName: product.name,
+                              brandName: product.brandName,
+                              brandBg: product.brandBg,
+                              brandFg: product.brandFg,
+                              brandFont: product.brandFont,
+                              imageUrl: product.imageUrl,
+                              categoryName: product.categoryName,
+                              price: defaultVariant?.price.amount ?? 0,
+                              qtyInCart: cartQty,
+                              onTap: () => _onProductTap(product),
+                            );
+                          },
+                          childCount: filtered.length,
+                        ),
+                        gridDelegate:
+                            SliverGridDelegateWithFixedCrossAxisCount(
+                          crossAxisCount: cols,
+                          // imagen cuadrada 1:1 + ~85px info
+                          childAspectRatio: 0.65,
+                          crossAxisSpacing: McSpacing.sm,
+                          mainAxisSpacing: McSpacing.sm,
+                        ),
+                      );
+                    },
                   ),
                 ),
                 if (_isLoadingMore)
@@ -296,7 +398,7 @@ class _ProductSearchState extends State<ProductSearch> {
                     ),
                   ),
                 const SliverPadding(
-                  padding: EdgeInsets.only(bottom: 80), // espacio para MobileCartBar
+                  padding: EdgeInsets.only(bottom: 80),
                 ),
               ],
             ),
@@ -306,177 +408,35 @@ class _ProductSearchState extends State<ProductSearch> {
   }
 }
 
-// ─── Card de producto (igual a CatalogScreen pero con onTap) ───
+// ─── Botón de flecha para scroll de categorías ───
 
-class _ProductCard extends StatelessWidget {
-  final Product product;
-  final int cartQty;
-  final VoidCallback onTap;
+class _ArrowBtn extends StatelessWidget {
+  final IconData icon;
+  final VoidCallback? onTap;
 
-  const _ProductCard({required this.product, required this.cartQty, required this.onTap});
+  const _ArrowBtn({required this.icon, this.onTap});
 
   @override
   Widget build(BuildContext context) {
-    final activeVariants = product.variants.where((v) => v.isActive).toList();
-    final defaultVariant =
-        activeVariants.where((v) => v.isDefault).firstOrNull ??
-            activeVariants.firstOrNull;
-    final inCart = cartQty > 0;
-
     return GestureDetector(
       onTap: onTap,
-      child: Stack(
-        children: [
-          Container(
-            decoration: BoxDecoration(
-              color: Theme.of(context).colorScheme.surface,
-              borderRadius: BorderRadius.circular(McSpacing.radiusMd),
-              border: Border.all(
-                color: inCart ? McColors.primary : const Color(0xFFE2E8F0),
-                width: inCart ? 2 : 1,
-              ),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.04),
-                  blurRadius: 4,
-                  offset: const Offset(0, 2),
-                ),
-              ],
+      child: Container(
+        width: 32,
+        height: 32,
+        margin: const EdgeInsets.symmetric(horizontal: 2),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          border: Border.all(color: McColors.borderLight),
+          borderRadius: BorderRadius.circular(McSpacing.radiusFull),
+          boxShadow: const [
+            BoxShadow(
+              color: Color(0x14050C40),
+              blurRadius: 4,
+              offset: Offset(0, 1),
             ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                // ─── Imagen o badge de marca ───
-                if (product.imageUrl != null)
-                  ClipRRect(
-                    borderRadius: const BorderRadius.vertical(top: Radius.circular(McSpacing.radiusMd)),
-                    child: SizedBox(
-                      height: 72,
-                      width: double.infinity,
-                      child: Image.network(
-                        product.imageUrl!,
-                        fit: BoxFit.cover,
-                        errorBuilder: (_, __, ___) => Container(
-                          color: McColors.mutedLight,
-                          child: const Icon(Icons.inventory_2_outlined, size: 24, color: McColors.textSecondaryLight),
-                        ),
-                        loadingBuilder: (_, child, progress) {
-                          if (progress == null) return child;
-                          return Container(
-                            color: McColors.mutedLight,
-                            child: const Center(
-                              child: SizedBox(
-                                width: 20,
-                                height: 20,
-                                child: CircularProgressIndicator(strokeWidth: 2),
-                              ),
-                            ),
-                          );
-                        },
-                      ),
-                    ),
-                  )
-                else
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(McSpacing.sm, McSpacing.sm, McSpacing.sm, 0),
-                    child: product.brandName != null
-                        ? BrandBadge(
-                            brandName: product.brandName!,
-                            size: BrandBadgeSize.sm,
-                            width: double.infinity,
-                          )
-                        : Container(
-                            height: 28,
-                            decoration: BoxDecoration(
-                              color: McColors.mutedLight,
-                              borderRadius: BorderRadius.circular(McSpacing.radiusSm),
-                            ),
-                            child: const Icon(Icons.inventory_2_outlined,
-                                size: 16, color: McColors.textSecondaryLight),
-                          ),
-                  ),
-
-                // ─── Nombre ───
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(McSpacing.sm, McSpacing.xs, McSpacing.sm, 0),
-                  child: Text(
-                    product.name,
-                    style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ),
-
-                // ─── Categoría ───
-                if (product.categoryName != null)
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: McSpacing.sm),
-                    child: Text(
-                      product.categoryName!,
-                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                            color: McColors.textSecondaryLight,
-                          ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-
-                const Spacer(),
-
-                // ─── Precio + indicador de múltiples variantes ───
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(McSpacing.sm, 0, McSpacing.sm, McSpacing.xs),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: Text(
-                          defaultVariant?.price.formatted ?? '—',
-                          style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                                fontWeight: FontWeight.bold,
-                                color: McColors.primary,
-                              ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                      if (activeVariants.length > 1)
-                        Tooltip(
-                          message: '${activeVariants.length} variantes',
-                          child: const Icon(Icons.expand_more,
-                              size: 16, color: McColors.textSecondaryLight),
-                        ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-
-          // ─── Badge de cantidad en carrito ───
-          if (inCart)
-            Positioned(
-              top: 8,
-              right: 8,
-              child: Container(
-                constraints: const BoxConstraints(minWidth: 24),
-                height: 24,
-                padding: const EdgeInsets.symmetric(horizontal: 6),
-                decoration: BoxDecoration(
-                  color: McColors.primary,
-                  borderRadius: BorderRadius.circular(McSpacing.radiusFull),
-                ),
-                alignment: Alignment.center,
-                child: Text(
-                  '$cartQty',
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 12,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-              ),
-            ),
-        ],
+          ],
+        ),
+        child: Icon(icon, size: 18, color: McColors.textFg2),
       ),
     );
   }

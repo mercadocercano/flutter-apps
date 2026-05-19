@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:mc_design_system/mc_design_system.dart';
 
 import '../../domain/models/global_product_model.dart';
 import '../bloc/global_products_bloc.dart';
@@ -51,7 +52,7 @@ class _GlobalProductDetailScreenState
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          const Icon(Icons.error_outline, size: 48, color: Colors.red),
+          const Icon(Icons.error_outline, size: 48, color: McColors.error),
           const SizedBox(height: 12),
           Text(message, textAlign: TextAlign.center),
           const SizedBox(height: 16),
@@ -73,7 +74,14 @@ class _GlobalProductDetailScreenState
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          _ImageSection(imageUrl: product.imageUrl),
+          _ImageSection(
+            imageUrl: product.imageUrl,
+            onDeleteImage: product.imageUrl != null
+                ? () => context
+                    .read<GlobalProductsBloc>()
+                    .add(ClearGlobalProductImageEvent(product.id))
+                : null,
+          ),
           const SizedBox(height: 20),
           _SectionCard(
             title: 'Datos basicos',
@@ -112,21 +120,33 @@ class _GlobalProductDetailScreenState
 
 class _ImageSection extends StatelessWidget {
   final String? imageUrl;
+  final VoidCallback? onDeleteImage;
 
-  const _ImageSection({this.imageUrl});
+  const _ImageSection({this.imageUrl, this.onDeleteImage});
 
   @override
   Widget build(BuildContext context) {
-    if (imageUrl != null) {
-      return ClipRRect(
-        borderRadius: BorderRadius.circular(12),
-        child: Image.network(
-          imageUrl!,
-          height: 200,
-          width: double.infinity,
-          fit: BoxFit.cover,
-          errorBuilder: (ctx, err, stack) => _noImagePlaceholder(),
-        ),
+    final hasImage = imageUrl != null && imageUrl!.isNotEmpty;
+    if (hasImage) {
+      return Stack(
+        children: [
+          ClipRRect(
+            borderRadius: BorderRadius.circular(12),
+            child: Image.network(
+              imageUrl!,
+              height: 200,
+              width: double.infinity,
+              fit: BoxFit.cover,
+              errorBuilder: (ctx, err, stack) => _noImagePlaceholder(),
+            ),
+          ),
+          if (onDeleteImage != null)
+            Positioned(
+              top: 8,
+              right: 8,
+              child: _DeleteImageButton(onTap: onDeleteImage!),
+            ),
+        ],
       );
     }
     return _noImagePlaceholder();
@@ -136,9 +156,9 @@ class _ImageSection extends StatelessWidget {
     return Container(
       height: 160,
       decoration: BoxDecoration(
-        color: const Color(0xFFF1F5F9),
+        color: McColors.mutedLight,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFFE2E8F0)),
+        border: Border.all(color: McColors.borderLight),
       ),
       child: const Column(
         mainAxisAlignment: MainAxisAlignment.center,
@@ -146,13 +166,65 @@ class _ImageSection extends StatelessWidget {
           Icon(
             Icons.image_not_supported_outlined,
             size: 48,
-            color: Colors.grey,
+            color: McColors.textSecondaryLight,
           ),
           SizedBox(height: 8),
-          Text('Sin imagen', style: TextStyle(color: Colors.grey)),
+          Text('Sin imagen', style: TextStyle(color: McColors.textSecondaryLight)),
         ],
       ),
     );
+  }
+}
+
+class _DeleteImageButton extends StatelessWidget {
+  final VoidCallback onTap;
+
+  const _DeleteImageButton({required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: () => _confirmDelete(context),
+      child: Container(
+        width: 36,
+        height: 36,
+        decoration: BoxDecoration(
+          color: McColors.error,
+          shape: BoxShape.circle,
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.25),
+              blurRadius: 4,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: const Icon(Icons.delete_outline, color: Colors.white, size: 18),
+      ),
+    );
+  }
+
+  void _confirmDelete(BuildContext context) {
+    showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Eliminar imagen'),
+        content: const Text('¿Eliminar la imagen asignada por webdata? No se puede deshacer.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: const Text('Cancelar'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            style: TextButton.styleFrom(foregroundColor: McColors.error),
+            child: const Text('Eliminar'),
+          ),
+        ],
+      ),
+    ).then((confirmed) {
+      if (confirmed == true) onTap();
+    });
   }
 }
 
@@ -199,7 +271,7 @@ class _BasicDataSection extends StatelessWidget {
             style: Theme.of(context)
                 .textTheme
                 .labelMedium
-                ?.copyWith(color: Colors.grey[600]),
+                ?.copyWith(color: McColors.textSecondaryLight),
           ),
           const SizedBox(height: 4),
           Text(product.description!),
@@ -220,10 +292,10 @@ class _QualitySection extends StatelessWidget {
   Widget build(BuildContext context) {
     final score = product.qualityScore.clamp(0, 100);
     final scoreColor = score >= 70
-        ? const Color(0xFF166534)
+        ? McColors.success
         : score >= 40
-            ? Colors.orange
-            : Colors.red;
+            ? McColors.warning
+            : McColors.error;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -239,7 +311,7 @@ class _QualitySection extends StatelessWidget {
         const SizedBox(height: 8),
         LinearProgressIndicator(
           value: score / 100,
-          backgroundColor: Colors.grey[200],
+          backgroundColor: McColors.borderLight,
           valueColor: AlwaysStoppedAnimation<Color>(scoreColor),
           minHeight: 8,
           borderRadius: BorderRadius.circular(4),
@@ -249,15 +321,12 @@ class _QualitySection extends StatelessWidget {
           children: [
             _StatusChip(
               label: product.isVerified ? 'Verificado' : 'No verificado',
-              color: product.isVerified
-                  ? const Color(0xFF166534)
-                  : Colors.grey,
+              color: product.isVerified ? McColors.success : McColors.textFg2,
             ),
             const SizedBox(width: 8),
             _StatusChip(
               label: product.isActive ? 'Activo' : 'Inactivo',
-              color:
-                  product.isActive ? const Color(0xFF166534) : Colors.grey,
+              color: product.isActive ? McColors.success : McColors.textFg2,
             ),
           ],
         ),
@@ -283,7 +352,7 @@ class _ImageUrlsSection extends StatelessWidget {
     if (urls.isEmpty) {
       return const Text(
         'Sin imagenes adicionales',
-        style: TextStyle(color: Colors.grey),
+        style: TextStyle(color: McColors.textSecondaryLight),
       );
     }
     return Wrap(
@@ -394,7 +463,7 @@ class _SectionCard extends StatelessWidget {
               title,
               style: Theme.of(context).textTheme.titleSmall?.copyWith(
                     fontWeight: FontWeight.bold,
-                    color: Colors.grey[700],
+                    color: McColors.textFg2,
                     letterSpacing: 0.5,
                   ),
             ),
@@ -427,7 +496,7 @@ class _DataRow extends StatelessWidget {
               style: Theme.of(context)
                   .textTheme
                   .bodySmall
-                  ?.copyWith(color: Colors.grey[600]),
+                  ?.copyWith(color: McColors.textSecondaryLight),
             ),
           ),
           Expanded(

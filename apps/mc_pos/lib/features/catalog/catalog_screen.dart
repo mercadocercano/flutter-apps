@@ -6,7 +6,8 @@ import 'package:mc_domain/mc_domain.dart';
 import 'product_form_screen.dart';
 import 'categories_screen.dart';
 import 'brands_screen.dart';
-import '../quickstart/brand_badge.dart';
+import '../../widgets/pos/pos_top_bar.dart';
+import '../../widgets/pos/product_card_pos.dart';
 
 /// Pantalla de catálogo — grid de productos con buscador, filtro y paginado.
 class CatalogScreen extends StatefulWidget {
@@ -21,6 +22,12 @@ class _CatalogScreenState extends State<CatalogScreen> {
 
   final _searchController = TextEditingController();
   final _scrollCtrl = ScrollController();
+  final _categoryScrollCtrl = ScrollController();
+  final _brandScrollCtrl = ScrollController();
+  bool _canScrollCatsLeft = false;
+  bool _canScrollCatsRight = true;
+  bool _canScrollBrandsLeft = false;
+  bool _canScrollBrandsRight = true;
 
   List<Product> _products = [];
   int _currentPage = 1;
@@ -28,12 +35,21 @@ class _CatalogScreenState extends State<CatalogScreen> {
   bool _isLoading = true;
   bool _isLoadingMore = false;
   String? _selectedCategory;
+  String? _selectedBrand;
   String _query = '';
 
   @override
   void initState() {
     super.initState();
     _scrollCtrl.addListener(_onScroll);
+    _categoryScrollCtrl.addListener(_onCategoryScroll);
+    _brandScrollCtrl.addListener(_onBrandScroll);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (_categoryScrollCtrl.hasClients) _onCategoryScroll();
+        if (_brandScrollCtrl.hasClients) _onBrandScroll();
+      });
+    });
     _loadPage(1);
   }
 
@@ -41,6 +57,8 @@ class _CatalogScreenState extends State<CatalogScreen> {
   void dispose() {
     _searchController.dispose();
     _scrollCtrl.dispose();
+    _categoryScrollCtrl.dispose();
+    _brandScrollCtrl.dispose();
     super.dispose();
   }
 
@@ -97,6 +115,44 @@ class _CatalogScreenState extends State<CatalogScreen> {
 
   bool get _hasMore => _currentPage * _pageSize < _totalCount;
 
+  void _onCategoryScroll() {
+    final pos = _categoryScrollCtrl.position;
+    setState(() {
+      _canScrollCatsLeft = pos.pixels > 4;
+      _canScrollCatsRight = pos.pixels < pos.maxScrollExtent - 4;
+    });
+  }
+
+  void _onBrandScroll() {
+    final pos = _brandScrollCtrl.position;
+    setState(() {
+      _canScrollBrandsLeft = pos.pixels > 4;
+      _canScrollBrandsRight = pos.pixels < pos.maxScrollExtent - 4;
+    });
+  }
+
+  void _scrollCats(double delta) {
+    _categoryScrollCtrl.animateTo(
+      (_categoryScrollCtrl.offset + delta).clamp(
+        0,
+        _categoryScrollCtrl.position.maxScrollExtent,
+      ),
+      duration: const Duration(milliseconds: 200),
+      curve: Curves.easeOut,
+    );
+  }
+
+  void _scrollBrands(double delta) {
+    _brandScrollCtrl.animateTo(
+      (_brandScrollCtrl.offset + delta).clamp(
+        0,
+        _brandScrollCtrl.position.maxScrollExtent,
+      ),
+      duration: const Duration(milliseconds: 200),
+      curve: Curves.easeOut,
+    );
+  }
+
   List<String> get _categories {
     final cats = <String>{};
     for (final p in _products) {
@@ -105,35 +161,35 @@ class _CatalogScreenState extends State<CatalogScreen> {
     return cats.toList()..sort();
   }
 
+  List<String> get _brands {
+    final brands = <String>{};
+    for (final p in _products) {
+      if (p.brandName != null) brands.add(p.brandName!);
+    }
+    return brands.toList()..sort();
+  }
+
   List<Product> get _filtered {
-    if (_selectedCategory == null) return _products;
-    return _products.where((p) => p.categoryName == _selectedCategory).toList();
+    var list = _products;
+    if (_selectedCategory != null) {
+      list = list.where((p) => p.categoryName == _selectedCategory).toList();
+    }
+    if (_selectedBrand != null) {
+      list = list.where((p) => p.brandName == _selectedBrand).toList();
+    }
+    return list;
   }
 
   @override
   Widget build(BuildContext context) {
+    final totalLabel = _isLoading
+        ? ''
+        : _query.isNotEmpty || _selectedCategory != null || _selectedBrand != null
+            ? '${_filtered.length} productos'
+            : '$_totalCount productos';
+
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Mis Productos'),
-        backgroundColor: McColors.primary,
-        foregroundColor: Colors.white,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.label_outline),
-            tooltip: 'Categorías',
-            onPressed: () => Navigator.of(context).push(
-              MaterialPageRoute(builder: (_) => const CategoriesScreen()),
-            ),
-          ),
-          IconButton(
-            icon: const Icon(Icons.storefront_outlined),
-            tooltip: 'Marcas',
-            onPressed: () => Navigator.of(context).push(
-              MaterialPageRoute(builder: (_) => const BrandsScreen()),
-            ),
-          ),
-        ],
-      ),
+      backgroundColor: McColors.backgroundLight,
       floatingActionButton: FloatingActionButton(
         onPressed: () async {
           final created = await Navigator.of(context).push<bool>(
@@ -146,6 +202,32 @@ class _CatalogScreenState extends State<CatalogScreen> {
       ),
       body: Column(
         children: [
+          PosTopBar(
+            title: 'Mis productos',
+            subtitle: totalLabel,
+            trailing: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                IconButton(
+                  icon: const Icon(Icons.label_outline),
+                  color: McColors.textFg2,
+                  tooltip: 'Categorías',
+                  onPressed: () => Navigator.of(context).push(
+                    MaterialPageRoute(builder: (_) => const CategoriesScreen()),
+                  ),
+                ),
+                IconButton(
+                  icon: const Icon(Icons.storefront_outlined),
+                  color: McColors.textFg2,
+                  tooltip: 'Marcas',
+                  onPressed: () => Navigator.of(context).push(
+                    MaterialPageRoute(builder: (_) => const BrandsScreen()),
+                  ),
+                ),
+              ],
+            ),
+          ),
+
           // ─── Buscador ───
           Padding(
             padding: const EdgeInsets.all(McSpacing.md),
@@ -160,48 +242,105 @@ class _CatalogScreenState extends State<CatalogScreen> {
             ),
           ),
 
-          // ─── Chips de categoría ───
+          // ─── Chips de categoría con flechas ───
           if (_categories.isNotEmpty)
             SizedBox(
-              height: 40,
-              child: ListView(
-                scrollDirection: Axis.horizontal,
-                padding: const EdgeInsets.symmetric(horizontal: McSpacing.md),
+              height: 48,
+              child: Row(
                 children: [
-                  _CategoryChip(
-                    label: 'Todos',
-                    isSelected: _selectedCategory == null,
-                    onTap: () => setState(() => _selectedCategory = null),
+                  AnimatedOpacity(
+                    opacity: _canScrollCatsLeft ? 1.0 : 0.0,
+                    duration: const Duration(milliseconds: 150),
+                    child: _ArrowBtn(
+                      icon: Icons.chevron_left,
+                      onTap: _canScrollCatsLeft ? () => _scrollCats(-200) : null,
+                    ),
                   ),
-                  ..._categories.map((cat) => _CategoryChip(
-                        label: cat,
-                        isSelected: _selectedCategory == cat,
-                        onTap: () => setState(() => _selectedCategory = cat),
-                      )),
+                  Expanded(
+                    child: ListView(
+                      controller: _categoryScrollCtrl,
+                      scrollDirection: Axis.horizontal,
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: McSpacing.sm, vertical: 4),
+                      children: [
+                        _CategoryChip(
+                          label: 'Todas las categorías',
+                          isSelected: _selectedCategory == null,
+                          onTap: () =>
+                              setState(() => _selectedCategory = null),
+                        ),
+                        ..._categories.map((cat) => _CategoryChip(
+                              label: cat,
+                              isSelected: _selectedCategory == cat,
+                              onTap: () =>
+                                  setState(() => _selectedCategory = cat),
+                            )),
+                      ],
+                    ),
+                  ),
+                  AnimatedOpacity(
+                    opacity: _canScrollCatsRight ? 1.0 : 0.0,
+                    duration: const Duration(milliseconds: 150),
+                    child: _ArrowBtn(
+                      icon: Icons.chevron_right,
+                      onTap:
+                          _canScrollCatsRight ? () => _scrollCats(200) : null,
+                    ),
+                  ),
                 ],
               ),
             ),
 
-          const SizedBox(height: McSpacing.sm),
-
-          // ─── Contador ───
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: McSpacing.md),
-            child: Row(
-              children: [
-                Text(
-                  _isLoading
-                      ? ''
-                      : _query.isNotEmpty || _selectedCategory != null
-                          ? '${_filtered.length} producto${_filtered.length == 1 ? '' : 's'}'
-                          : '${_products.length} de $_totalCount producto${_totalCount == 1 ? '' : 's'}',
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: McColors.textSecondaryLight,
-                      ),
-                ),
-              ],
+          // ─── Chips de marca con flechas ───
+          if (_brands.isNotEmpty)
+            SizedBox(
+              height: 44,
+              child: Row(
+                children: [
+                  AnimatedOpacity(
+                    opacity: _canScrollBrandsLeft ? 1.0 : 0.0,
+                    duration: const Duration(milliseconds: 150),
+                    child: _ArrowBtn(
+                      icon: Icons.chevron_left,
+                      onTap: _canScrollBrandsLeft
+                          ? () => _scrollBrands(-200)
+                          : null,
+                    ),
+                  ),
+                  Expanded(
+                    child: ListView(
+                      controller: _brandScrollCtrl,
+                      scrollDirection: Axis.horizontal,
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: McSpacing.sm, vertical: 4),
+                      children: [
+                        _CategoryChip(
+                          label: 'Todas las marcas',
+                          isSelected: _selectedBrand == null,
+                          onTap: () => setState(() => _selectedBrand = null),
+                        ),
+                        ..._brands.map((brand) => _CategoryChip(
+                              label: brand,
+                              isSelected: _selectedBrand == brand,
+                              onTap: () =>
+                                  setState(() => _selectedBrand = brand),
+                            )),
+                      ],
+                    ),
+                  ),
+                  AnimatedOpacity(
+                    opacity: _canScrollBrandsRight ? 1.0 : 0.0,
+                    duration: const Duration(milliseconds: 150),
+                    child: _ArrowBtn(
+                      icon: Icons.chevron_right,
+                      onTap: _canScrollBrandsRight
+                          ? () => _scrollBrands(200)
+                          : null,
+                    ),
+                  ),
+                ],
+              ),
             ),
-          ),
 
           const SizedBox(height: McSpacing.sm),
 
@@ -216,30 +355,47 @@ class _CatalogScreenState extends State<CatalogScreen> {
                   controller: _scrollCtrl,
                   slivers: [
                     SliverPadding(
-                      padding: const EdgeInsets.symmetric(horizontal: McSpacing.md),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: McSpacing.md),
                       sliver: _filtered.isEmpty
                           ? SliverFillRemaining(
                               child: Center(
                                 child: Text(
-                                  _query.isNotEmpty ? 'Sin resultados' : 'Sin productos',
-                                  style: const TextStyle(color: McColors.textSecondaryLight),
+                                  _query.isNotEmpty
+                                      ? 'Sin resultados'
+                                      : 'Sin productos',
+                                  style: const TextStyle(
+                                      color: McColors.textSecondaryLight),
                                 ),
                               ),
                             )
-                          : SliverGrid(
-                              delegate: SliverChildBuilderDelegate(
-                                (_, i) => _ProductCard(
-                                  product: _filtered[i],
-                                  onEdited: _refresh,
-                                ),
-                                childCount: _filtered.length,
-                              ),
-                              gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
-                                maxCrossAxisExtent: 220,
-                                mainAxisExtent: 180,
-                                crossAxisSpacing: McSpacing.sm,
-                                mainAxisSpacing: McSpacing.sm,
-                              ),
+                          : SliverLayoutBuilder(
+                              builder: (_, constraints) {
+                                final w = constraints.crossAxisExtent;
+                                final cols = w < 400
+                                    ? 2
+                                    : w < 700
+                                        ? 3
+                                        : w < 1000
+                                            ? 4
+                                            : 5;
+                                return SliverGrid(
+                                  delegate: SliverChildBuilderDelegate(
+                                    (_, i) => _ProductCard(
+                                      product: _filtered[i],
+                                      onEdited: _refresh,
+                                    ),
+                                    childCount: _filtered.length,
+                                  ),
+                                  gridDelegate:
+                                      SliverGridDelegateWithFixedCrossAxisCount(
+                                    crossAxisCount: cols,
+                                    childAspectRatio: 0.65,
+                                    crossAxisSpacing: McSpacing.sm,
+                                    mainAxisSpacing: McSpacing.sm,
+                                  ),
+                                );
+                              },
                             ),
                     ),
                   ],
@@ -247,8 +403,8 @@ class _CatalogScreenState extends State<CatalogScreen> {
               ),
             ),
 
-          // ─── Paginado siempre visible ───
-          if (!_isLoading && _query.isEmpty && _selectedCategory == null)
+          // ─── Paginado ───
+          if (!_isLoading && _query.isEmpty && _selectedCategory == null && _selectedBrand == null)
             _PaginationBar(
               isLoadingMore: _isLoadingMore,
               hasMore: _hasMore,
@@ -332,6 +488,7 @@ class _PaginationBar extends StatelessWidget {
 
 // ─── Card de producto ───
 
+/// Card de producto del catálogo — wrapper de [ProductCardPos] con botón editar.
 class _ProductCard extends StatelessWidget {
   final Product product;
   final VoidCallback? onEdited;
@@ -345,131 +502,89 @@ class _ProductCard extends StatelessWidget {
         activeVariants.where((v) => v.isDefault).firstOrNull ??
             activeVariants.firstOrNull;
 
-    return Container(
-      decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surface,
-        borderRadius: BorderRadius.circular(McSpacing.radiusMd),
-        border: Border.all(color: Theme.of(context).colorScheme.outlineVariant),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
-            blurRadius: 4,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          // ─── Imagen o badge de marca ───
-          if (product.imageUrl != null)
-            ClipRRect(
-              borderRadius: const BorderRadius.vertical(top: Radius.circular(McSpacing.radiusMd)),
-              child: SizedBox(
-                height: 72,
-                width: double.infinity,
-                child: Image.network(
-                  product.imageUrl!,
-                  fit: BoxFit.cover,
-                  errorBuilder: (_, __, ___) => Container(
-                    color: McColors.mutedLight,
-                    child: const Icon(Icons.inventory_2_outlined, size: 24, color: McColors.textSecondaryLight),
-                  ),
-                  loadingBuilder: (_, child, progress) {
-                    if (progress == null) return child;
-                    return Container(
-                      color: McColors.mutedLight,
-                      child: const Center(
-                        child: SizedBox(
-                          width: 20,
-                          height: 20,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        ),
-                      ),
-                    );
-                  },
-                ),
+    return Stack(
+      children: [
+        ProductCardPos(
+          productName: product.name,
+          brandName: product.brandName,
+          brandBg: product.brandBg,
+          brandFg: product.brandFg,
+          brandFont: product.brandFont,
+          imageUrl: product.imageUrl,
+          categoryName: product.categoryName,
+          price: defaultVariant?.price.amount ?? 0,
+          onTap: () async {
+            final edited = await Navigator.of(context).push<bool>(
+              MaterialPageRoute(
+                builder: (_) => ProductFormScreen(editing: product),
               ),
-            )
-          else
-            Padding(
-              padding: const EdgeInsets.fromLTRB(McSpacing.sm, McSpacing.sm, McSpacing.sm, 0),
-              child: product.brandName != null
-                  ? BrandBadge(
-                      brandName: product.brandName!,
-                      size: BrandBadgeSize.sm,
-                      width: double.infinity,
-                    )
-                  : Container(
-                      height: 28,
-                      decoration: BoxDecoration(
-                        color: McColors.mutedLight,
-                        borderRadius: BorderRadius.circular(McSpacing.radiusSm),
-                      ),
-                      child: const Icon(Icons.inventory_2_outlined, size: 16, color: McColors.textSecondaryLight),
-                    ),
-            ),
-
-          // ─── Nombre ───
-          Padding(
-            padding: const EdgeInsets.fromLTRB(McSpacing.sm, McSpacing.xs, McSpacing.sm, 0),
-            child: Text(
-              product.name,
-              style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-            ),
-          ),
-
-          // ─── Categoría ───
-          if (product.categoryName != null)
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: McSpacing.sm),
-              child: Text(
-                product.categoryName!,
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: McColors.textSecondaryLight,
-                    ),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
+            );
+            if (edited == true) onEdited?.call();
+          },
+        ),
+        // Botón editar superpuesto en la esquina inferior derecha
+        Positioned(
+          bottom: McSpacing.sm,
+          right: McSpacing.sm,
+          child: GestureDetector(
+            onTap: () async {
+              final edited = await Navigator.of(context).push<bool>(
+                MaterialPageRoute(
+                  builder: (_) => ProductFormScreen(editing: product),
+                ),
+              );
+              if (edited == true) onEdited?.call();
+            },
+            child: Container(
+              width: 28,
+              height: 28,
+              decoration: BoxDecoration(
+                color: McColors.cobaltTint,
+                borderRadius: BorderRadius.circular(McSpacing.radiusSm),
+                border: Border.all(color: McColors.primary),
+              ),
+              child: const Icon(
+                Icons.edit_outlined,
+                size: 14,
+                color: McColors.primary,
               ),
             ),
-
-          const Spacer(),
-
-          // ─── Precio + editar ───
-          Padding(
-            padding: const EdgeInsets.fromLTRB(McSpacing.sm, 0, McSpacing.xs, McSpacing.xs),
-            child: Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    defaultVariant?.price.formatted ?? '—',
-                    style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                          fontWeight: FontWeight.bold,
-                          color: McColors.primary,
-                        ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ),
-                IconButton(
-                  icon: const Icon(Icons.edit_outlined, size: 16),
-                  visualDensity: VisualDensity.compact,
-                  padding: EdgeInsets.zero,
-                  onPressed: () async {
-                    final edited = await Navigator.of(context).push<bool>(
-                      MaterialPageRoute(
-                        builder: (_) => ProductFormScreen(editing: product),
-                      ),
-                    );
-                    if (edited == true) onEdited?.call();
-                  },
-                ),
-              ],
-            ),
           ),
-        ],
+        ),
+      ],
+    );
+  }
+}
+
+// ─── Flecha de scroll ───
+
+class _ArrowBtn extends StatelessWidget {
+  final IconData icon;
+  final VoidCallback? onTap;
+
+  const _ArrowBtn({required this.icon, this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: 32,
+        height: 32,
+        margin: const EdgeInsets.symmetric(horizontal: 2),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          border: Border.all(color: McColors.borderLight),
+          borderRadius: BorderRadius.circular(McSpacing.radiusFull),
+          boxShadow: const [
+            BoxShadow(
+              color: Color(0x14050C40),
+              blurRadius: 4,
+              offset: Offset(0, 1),
+            ),
+          ],
+        ),
+        child: Icon(icon, size: 18, color: McColors.textFg2),
       ),
     );
   }
@@ -492,12 +607,29 @@ class _CategoryChip extends StatelessWidget {
   Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.only(right: McSpacing.sm),
-      child: FilterChip(
-        label: Text(label),
-        selected: isSelected,
-        onSelected: (_) => onTap(),
-        selectedColor: McColors.primary.withValues(alpha: 0.15),
-        checkmarkColor: McColors.primary,
+      child: GestureDetector(
+        onTap: onTap,
+        child: Container(
+          constraints: const BoxConstraints(minHeight: 36),
+          padding:
+              const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+          decoration: BoxDecoration(
+            color: isSelected ? McColors.primary : Colors.white,
+            borderRadius: BorderRadius.circular(McSpacing.radiusFull),
+            border: Border.all(
+              color: isSelected ? McColors.primary : McColors.borderLight,
+              width: isSelected ? 2 : 1,
+            ),
+          ),
+          child: Text(
+            label,
+            style: TextStyle(
+              fontWeight: FontWeight.w600,
+              fontSize: 13,
+              color: isSelected ? Colors.white : McColors.textFg2,
+            ),
+          ),
+        ),
       ),
     );
   }

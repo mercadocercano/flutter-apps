@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:mc_design_system/mc_design_system.dart';
+import '../../widgets/pos/pos_modal.dart';
+import '../auth/auth_cubit.dart';
 
 /// Pantalla de configuración — datos del comercio, cuenta, soporte.
 class SettingsScreen extends StatelessWidget {
@@ -101,7 +104,7 @@ class SettingsScreen extends StatelessWidget {
             variant: McButtonVariant.outline,
             expand: true,
             onPressed: () {
-              // TODO: limpiar sesión y volver a auth
+              context.read<AuthCubit>().logout();
             },
           ),
           const SizedBox(height: McSpacing.xl),
@@ -112,33 +115,50 @@ class SettingsScreen extends StatelessWidget {
 
   void _showEdit(BuildContext context, String field, String current) {
     final controller = TextEditingController(text: current);
-    showDialog(
+    showPosDialog<void>(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text(field),
-        content: McTextField(
-          controller: controller,
-          autofocus: true,
-        ),
-        actions: [
-          McButton(
-            label: 'Cancelar',
-            variant: McButtonVariant.ghost,
-            onPressed: () => Navigator.of(ctx).pop(),
-          ),
-          McButton(
-            label: 'Guardar',
-            onPressed: () {
-              Navigator.of(ctx).pop();
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text('$field actualizado'),
-                  backgroundColor: McColors.success,
+      child: Padding(
+        padding: const EdgeInsets.all(McSpacing.lg),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              field,
+              style: const TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                color: McColors.foregroundLight,
+              ),
+            ),
+            const SizedBox(height: McSpacing.md),
+            McTextField(controller: controller, autofocus: true),
+            const SizedBox(height: McSpacing.lg),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                McButton(
+                  label: 'Cancelar',
+                  variant: McButtonVariant.ghost,
+                  onPressed: () => Navigator.of(context).pop(),
                 ),
-              );
-            },
-          ),
-        ],
+                const SizedBox(width: McSpacing.sm),
+                McButton(
+                  label: 'Guardar',
+                  onPressed: () {
+                    Navigator.of(context).pop();
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text('$field actualizado'),
+                        backgroundColor: McColors.success,
+                      ),
+                    );
+                  },
+                ),
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }

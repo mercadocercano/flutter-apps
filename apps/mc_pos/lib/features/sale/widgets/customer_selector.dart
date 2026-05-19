@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:mc_design_system/mc_design_system.dart';
 import 'package:mc_domain/mc_domain.dart';
+import '../../../widgets/pos/pos_modal.dart';
 
 /// Selector de cliente — búsqueda + creación rápida.
 /// Por defecto usa "Consumidor Final".
@@ -60,10 +61,10 @@ class _CustomerSelectorState extends State<CustomerSelector> {
   }
 
   void _showCustomerSheet(BuildContext context) {
-    showModalBottomSheet(
+    showPosModal(
       context: context,
       isScrollControlled: true,
-      builder: (_) => DraggableScrollableSheet(
+      child: DraggableScrollableSheet(
         initialChildSize: 0.7,
         maxChildSize: 0.9,
         expand: false,

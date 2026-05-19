@@ -12,3 +12,4 @@ workspace:
   - packages/mc_hardware
   - apps/mc_pos
   - apps/mc_consumer
+  - apps/mc_admin
