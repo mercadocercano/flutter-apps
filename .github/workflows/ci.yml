@@ -41,7 +41,7 @@ jobs:
             --data-urlencode text="$MSG"
 
   build-apk:
-    name: Build mc_pos APK
+    name: Build mc_pos APK (Android)
     runs-on: ubuntu-latest
     needs: test
     if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
@@ -87,8 +87,89 @@ jobs:
             -d chat_id="${{ secrets.TELEGRAM_CHAT_ID }}" \
             --data-urlencode text="$MSG"
 
-  deploy-web:
-    name: Deploy mc_admin web → k8s
+  deploy-pos-web:
+    name: Deploy mc_pos web → backoffice.mercadocercano.com.ar
+    runs-on: ubuntu-latest
+    needs: test
+    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+
+      - name: Bootstrap workspace
+        run: dart pub get && dart run melos bootstrap
+
+      - name: Build mc_pos web
+        working-directory: apps/mc_pos
+        run: |
+          flutter build web --release \
+            --dart-define=API_BASE_URL=${{ secrets.API_BASE_URL }}
+
+      - name: Setup Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to DigitalOcean Registry
+        uses: docker/login-action@v3
+        with:
+          registry: registry.digitalocean.com
+          username: ${{ secrets.DOCR_TOKEN }}
+          password: ${{ secrets.DOCR_TOKEN }}
+
+      - name: Build and Push mc_pos web image
+        uses: docker/build-push-action@v5
+        with:
+          context: apps/mc_pos
+          file: apps/mc_pos/Dockerfile.web
+          push: true
+          platforms: linux/amd64
+          provenance: false
+          tags: ${{ env.REGISTRY }}/mc-pos-web:${{ github.sha }}
+
+      - name: Set up SSH key
+        run: |
+          mkdir -p ~/.ssh
+          if echo "${{ secrets.SSH_PRIVATE_KEY }}" | grep -q '^-----BEGIN'; then
+            echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/deploy_key
+          else
+            echo "${{ secrets.SSH_PRIVATE_KEY }}" | base64 -d > ~/.ssh/deploy_key
+          fi
+          chmod 600 ~/.ssh/deploy_key
+          ssh-keyscan -H ${{ secrets.DROPLET_IP }} >> ~/.ssh/known_hosts 2>/dev/null || true
+
+      - name: Deploy mc_pos web to k8s (backoffice-admin)
+        run: |
+          ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no deploy@${{ secrets.DROPLET_IP }} \
+            "export KUBECONFIG=/home/deploy/.kube/config && \
+             kubectl set image deployment/backoffice-admin \
+               backoffice-admin=${{ env.REGISTRY }}/mc-pos-web:${{ github.sha }} \
+               -n default && \
+             kubectl scale deployment/backoffice-admin --replicas=1 -n default && \
+             kubectl rollout status deployment/backoffice-admin -n default --timeout=180s || \
+             (kubectl rollout undo deployment/backoffice-admin -n default && echo 'Rollback triggered' && exit 1)"
+
+      - name: Notify Telegram on success
+        if: success()
+        run: |
+          MSG=$(printf '✅ mc_pos WEB DEPLOYED\nURL: https://backoffice.mercadocercano.com.ar\nCommit: ${{ github.sha }}')
+          curl -s -X POST "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage" \
+            -d chat_id="${{ secrets.TELEGRAM_CHAT_ID }}" \
+            --data-urlencode text="$MSG"
+
+      - name: Notify Telegram on failure
+        if: failure()
+        run: |
+          MSG=$(printf '❌ mc_pos WEB FAILED\nCommit: ${{ github.sha }}\nRun: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}')
+          curl -s -X POST "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage" \
+            -d chat_id="${{ secrets.TELEGRAM_CHAT_ID }}" \
+            --data-urlencode text="$MSG"
+
+  deploy-admin-web:
+    name: Deploy mc_admin web → admin.mercadocercano.com.ar
     runs-on: ubuntu-latest
     needs: test
     if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
@@ -120,7 +201,7 @@ jobs:
           username: ${{ secrets.DOCR_TOKEN }}
           password: ${{ secrets.DOCR_TOKEN }}
 
-      - name: Build and Push mc_admin image
+      - name: Build and Push mc_admin web image
         uses: docker/build-push-action@v5
         with:
           context: apps/mc_admin
@@ -128,7 +209,7 @@ jobs:
           push: true
           platforms: linux/amd64
           provenance: false
-          tags: ${{ env.REGISTRY }}/mc-admin:${{ github.sha }}
+          tags: ${{ env.REGISTRY }}/mc-admin-web:${{ github.sha }}
 
       - name: Set up SSH key
         run: |
@@ -141,21 +222,21 @@ jobs:
           chmod 600 ~/.ssh/deploy_key
           ssh-keyscan -H ${{ secrets.DROPLET_IP }} >> ~/.ssh/known_hosts 2>/dev/null || true
 
-      - name: Deploy mc_admin to k8s
+      - name: Deploy mc_admin web to k8s (marketplace-admin)
         run: |
           ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no deploy@${{ secrets.DROPLET_IP }} \
             "export KUBECONFIG=/home/deploy/.kube/config && \
-             kubectl set image deployment/backoffice-admin \
-               backoffice-admin=${{ env.REGISTRY }}/mc-admin:${{ github.sha }} \
+             kubectl set image deployment/marketplace-admin \
+               marketplace-admin=${{ env.REGISTRY }}/mc-admin-web:${{ github.sha }} \
                -n default && \
-             kubectl scale deployment/backoffice-admin --replicas=1 -n default && \
-             kubectl rollout status deployment/backoffice-admin -n default --timeout=180s || \
-             (kubectl rollout undo deployment/backoffice-admin -n default && echo 'Rollback triggered' && exit 1)"
+             kubectl scale deployment/marketplace-admin --replicas=1 -n default && \
+             kubectl rollout status deployment/marketplace-admin -n default --timeout=180s || \
+             (kubectl rollout undo deployment/marketplace-admin -n default && echo 'Rollback triggered' && exit 1)"
 
       - name: Notify Telegram on success
         if: success()
         run: |
-          MSG=$(printf '✅ mc_admin WEB DEPLOYED\nCommit: ${{ github.sha }}')
+          MSG=$(printf '✅ mc_admin WEB DEPLOYED\nURL: https://admin.mercadocercano.com.ar\nCommit: ${{ github.sha }}')
           curl -s -X POST "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage" \
             -d chat_id="${{ secrets.TELEGRAM_CHAT_ID }}" \
             --data-urlencode text="$MSG"
