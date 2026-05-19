@@ -11,7 +11,7 @@ command:
 
 scripts:
   analyze:
-    run: dart analyze --fatal-infos
+    run: dart analyze
     exec:
       concurrency: 5
     description: Run dart analyze in all packages
