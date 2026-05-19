@@ -23,14 +23,18 @@ jobs:
           channel: stable
           cache: true
 
-      - name: Bootstrap workspace
-        run: dart pub get && dart run melos bootstrap
+      - name: Get dependencies
+        run: flutter pub get
 
       - name: Analyze
-        run: dart run melos run analyze
+        run: flutter analyze
 
-      - name: Test
-        run: dart run melos run test
+      - name: Test packages
+        run: |
+          for pkg in packages/mc_domain packages/mc_application packages/mc_design_system packages/mc_infrastructure packages/mc_hardware; do
+            echo "Testing $pkg..."
+            (cd $pkg && dart test) || exit 1
+          done
 
       - name: Notify Telegram on failure
         if: failure()
@@ -54,8 +58,8 @@ jobs:
           channel: stable
           cache: true
 
-      - name: Bootstrap workspace
-        run: dart pub get && dart run melos bootstrap
+      - name: Get dependencies
+        run: flutter pub get
 
       - name: Build APK (release)
         working-directory: apps/mc_pos
@@ -101,8 +105,8 @@ jobs:
           channel: stable
           cache: true
 
-      - name: Bootstrap workspace
-        run: dart pub get && dart run melos bootstrap
+      - name: Get dependencies
+        run: flutter pub get
 
       - name: Build mc_pos web
         working-directory: apps/mc_pos
@@ -182,8 +186,8 @@ jobs:
           channel: stable
           cache: true
 
-      - name: Bootstrap workspace
-        run: dart pub get && dart run melos bootstrap
+      - name: Get dependencies
+        run: flutter pub get
 
       - name: Build mc_admin web
         working-directory: apps/mc_admin
