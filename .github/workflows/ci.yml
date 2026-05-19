@@ -1,4 +1,4 @@
-name: Flutter CI — mc_pos
+name: Flutter CI
 
 on:
   push:
@@ -8,6 +8,7 @@ on:
 
 env:
   FLUTTER_VERSION: '3.32.0'
+  REGISTRY: registry.digitalocean.com/mc-bootstrap-registry
 
 jobs:
   test:
@@ -73,7 +74,7 @@ jobs:
       - name: Notify Telegram on success
         if: success()
         run: |
-          MSG=$(printf '✅ APK BUILD OK: mc_pos\nCommit: ${{ github.sha }}\nRun: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}\n\nDescargá desde Actions → Artifacts')
+          MSG=$(printf '✅ APK OK: mc_pos\nCommit: ${{ github.sha }}\nRun: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}\nDescargá desde Actions → Artifacts')
           curl -s -X POST "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage" \
             -d chat_id="${{ secrets.TELEGRAM_CHAT_ID }}" \
             --data-urlencode text="$MSG"
@@ -81,7 +82,88 @@ jobs:
       - name: Notify Telegram on failure
         if: failure()
         run: |
-          MSG=$(printf '❌ APK BUILD FAILED: mc_pos\nCommit: ${{ github.sha }}\nRun: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}')
+          MSG=$(printf '❌ APK FAILED: mc_pos\nCommit: ${{ github.sha }}\nRun: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}')
+          curl -s -X POST "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage" \
+            -d chat_id="${{ secrets.TELEGRAM_CHAT_ID }}" \
+            --data-urlencode text="$MSG"
+
+  deploy-web:
+    name: Deploy mc_admin web → k8s
+    runs-on: ubuntu-latest
+    needs: test
+    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+
+      - name: Bootstrap workspace
+        run: dart pub get && dart run melos bootstrap
+
+      - name: Build mc_admin web
+        working-directory: apps/mc_admin
+        run: |
+          flutter build web --release \
+            --dart-define=API_BASE_URL=${{ secrets.API_BASE_URL }}
+
+      - name: Setup Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to DigitalOcean Registry
+        uses: docker/login-action@v3
+        with:
+          registry: registry.digitalocean.com
+          username: ${{ secrets.DOCR_TOKEN }}
+          password: ${{ secrets.DOCR_TOKEN }}
+
+      - name: Build and Push mc_admin image
+        uses: docker/build-push-action@v5
+        with:
+          context: apps/mc_admin
+          file: apps/mc_admin/Dockerfile.web
+          push: true
+          platforms: linux/amd64
+          provenance: false
+          tags: ${{ env.REGISTRY }}/mc-admin:${{ github.sha }}
+
+      - name: Set up SSH key
+        run: |
+          mkdir -p ~/.ssh
+          if echo "${{ secrets.SSH_PRIVATE_KEY }}" | grep -q '^-----BEGIN'; then
+            echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/deploy_key
+          else
+            echo "${{ secrets.SSH_PRIVATE_KEY }}" | base64 -d > ~/.ssh/deploy_key
+          fi
+          chmod 600 ~/.ssh/deploy_key
+          ssh-keyscan -H ${{ secrets.DROPLET_IP }} >> ~/.ssh/known_hosts 2>/dev/null || true
+
+      - name: Deploy mc_admin to k8s
+        run: |
+          ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no deploy@${{ secrets.DROPLET_IP }} \
+            "export KUBECONFIG=/home/deploy/.kube/config && \
+             kubectl set image deployment/backoffice-admin \
+               backoffice-admin=${{ env.REGISTRY }}/mc-admin:${{ github.sha }} \
+               -n default && \
+             kubectl scale deployment/backoffice-admin --replicas=1 -n default && \
+             kubectl rollout status deployment/backoffice-admin -n default --timeout=180s || \
+             (kubectl rollout undo deployment/backoffice-admin -n default && echo 'Rollback triggered' && exit 1)"
+
+      - name: Notify Telegram on success
+        if: success()
+        run: |
+          MSG=$(printf '✅ mc_admin WEB DEPLOYED\nCommit: ${{ github.sha }}')
+          curl -s -X POST "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage" \
+            -d chat_id="${{ secrets.TELEGRAM_CHAT_ID }}" \
+            --data-urlencode text="$MSG"
+
+      - name: Notify Telegram on failure
+        if: failure()
+        run: |
+          MSG=$(printf '❌ mc_admin WEB FAILED\nCommit: ${{ github.sha }}\nRun: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}')
           curl -s -X POST "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage" \
             -d chat_id="${{ secrets.TELEGRAM_CHAT_ID }}" \
             --data-urlencode text="$MSG"
