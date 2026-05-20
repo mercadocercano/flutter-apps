@@ -35,7 +35,8 @@ jobs:
             echo "Testing $pkg..."
             result=$(cd $pkg && dart test 2>&1); code=$?
             echo "$result"
-            if [ $code -ne 0 ] && ! echo "$result" | grep -q "No tests were found"; then
+            # exit 79 = no tests found (empty package) — not a failure
+            if [ $code -ne 0 ] && [ $code -ne 79 ]; then
               exit 1
             fi
           done
