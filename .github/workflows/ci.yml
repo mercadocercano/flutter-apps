@@ -123,7 +123,7 @@ jobs:
       - name: Build mc_pos web
         working-directory: apps/mc_pos
         run: |
-          flutter build web --release \
+          flutter build web --release --no-pub \
             --dart-define=API_BASE_URL=${{ secrets.API_BASE_URL }}
 
       - name: Setup Docker Buildx
@@ -204,7 +204,7 @@ jobs:
       - name: Build mc_admin web
         working-directory: apps/mc_admin
         run: |
-          flutter build web --release \
+          flutter build web --release --no-pub \
             --dart-define=API_BASE_URL=${{ secrets.API_BASE_URL }}
 
       - name: Setup Docker Buildx
