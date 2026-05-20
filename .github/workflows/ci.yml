@@ -29,15 +29,22 @@ jobs:
       - name: Analyze
         run: flutter analyze --no-fatal-warnings --no-fatal-infos
 
-      - name: Test packages
+      - name: Test pure-Dart packages
         run: |
-          for pkg in packages/mc_domain packages/mc_application packages/mc_design_system packages/mc_infrastructure packages/mc_hardware; do
+          for pkg in packages/mc_domain packages/mc_application packages/mc_hardware; do
             echo "Testing $pkg..."
             result=$(cd $pkg && dart test 2>&1); code=$?
             echo "$result"
             if [ $code -ne 0 ] && ! echo "$result" | grep -q "No tests were found"; then
               exit 1
             fi
+          done
+
+      - name: Test Flutter packages
+        run: |
+          for pkg in packages/mc_infrastructure packages/mc_design_system; do
+            echo "Testing $pkg..."
+            (cd $pkg && flutter test) || exit 1
           done
 
       - name: Notify Telegram on failure
