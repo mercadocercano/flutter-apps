@@ -162,7 +162,7 @@ jobs:
           ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no deploy@${{ secrets.DROPLET_IP }} \
             "export KUBECONFIG=/home/deploy/.kube/config && \
              kubectl set image deployment/backoffice-admin \
-               backoffice-admin=${{ env.REGISTRY }}/mc-pos-web:${{ github.sha }} \
+               backoffice=${{ env.REGISTRY }}/mc-pos-web:${{ github.sha }} \
                -n default && \
              kubectl scale deployment/backoffice-admin --replicas=1 -n default && \
              kubectl rollout status deployment/backoffice-admin -n default --timeout=180s || \
