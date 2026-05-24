@@ -16,7 +16,7 @@ void main() {
   final authAdapter = AuthHttpAdapter(
     baseUrl: const String.fromEnvironment(
       'API_BASE_URL',
-      defaultValue: 'http://localhost:8001',
+      defaultValue: 'https://api.mercadocercano.com.ar',
     ),
     storage: storage,
   );
@@ -56,7 +56,7 @@ class _McPosRootState extends State<_McPosRoot> {
     _httpClient = McHttpClient(
       baseUrl: const String.fromEnvironment(
         'API_BASE_URL',
-        defaultValue: 'http://localhost:8001',
+        defaultValue: 'https://api.mercadocercano.com.ar',
       ),
       sessionProvider: authCubit,
     );
