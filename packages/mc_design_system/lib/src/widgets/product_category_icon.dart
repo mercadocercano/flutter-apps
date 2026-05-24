@@ -26,7 +26,7 @@ abstract final class ProductCategoryIcon {
     if (input == null || input.trim().isEmpty) return null;
     final s = _normalize(input);
 
-    if (_any(s, ['bebida', 'gaseosa', 'jugo', 'agua', 'refresco', 'soda', 'infusion', 'te', 'cafe'])) {
+    if (_any(s, ['bebida', 'gaseosa', 'jugo', 'agua', 'refresco', 'soda', 'infusion', 'cafe'])) {
       return Icons.local_drink_outlined;
     }
     if (_any(s, ['cerveza'])) return Icons.sports_bar_outlined;
