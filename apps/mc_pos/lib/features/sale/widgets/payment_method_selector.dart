@@ -4,21 +4,24 @@ import 'package:mc_domain/mc_domain.dart';
 
 /// Selector de medio de pago — chips visuales.
 class PaymentMethodSelector extends StatelessWidget {
+  final List<PaymentMethod>? methods;
   final PaymentMethod? selected;
   final ValueChanged<PaymentMethod> onSelected;
 
   const PaymentMethodSelector({
     super.key,
+    this.methods,
     this.selected,
     required this.onSelected,
   });
 
   @override
   Widget build(BuildContext context) {
+    final items = (methods != null && methods!.isNotEmpty) ? methods! : _demoMethods;
     return Wrap(
       spacing: McSpacing.sm,
       runSpacing: McSpacing.sm,
-      children: _demoMethods.map((method) {
+      children: items.map((method) {
         final isSelected = selected?.id == method.id;
         return _PaymentChip(
           method: method,

@@ -43,6 +43,7 @@ class _SaleScreenState extends State<SaleScreen> {
   late PosSale _sale;
   Customer? _customer;
   PaymentMethod? _paymentMethod;
+  List<PaymentMethod> _paymentMethods = [];
   bool _initialized = false;
   late final TextEditingController _searchController;
 
@@ -64,6 +65,19 @@ class _SaleScreenState extends State<SaleScreen> {
     if (!_initialized) {
       _sale = PosSale.start(tenantId: _tenantId);
       _initialized = true;
+      _loadPaymentMethods();
+    }
+  }
+
+  Future<void> _loadPaymentMethods() async {
+    try {
+      final methods =
+          await context.read<PaymentMethodPort>().listPaymentMethods();
+      if (mounted && methods.isNotEmpty) {
+        setState(() => _paymentMethods = methods);
+      }
+    } catch (_) {
+      // fallback: PaymentMethodSelector uses its own defaults
     }
   }
 
@@ -535,6 +549,7 @@ class _CheckoutSheetState extends State<_CheckoutSheet> {
                   style: Theme.of(context).textTheme.titleSmall),
               const SizedBox(height: McSpacing.sm),
               PaymentMethodSelector(
+                methods: _paymentMethods,
                 selected: _paymentMethod,
                 onSelected: (pm) => setState(() {
                   _paymentMethod = pm;
