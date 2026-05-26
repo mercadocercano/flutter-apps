@@ -194,6 +194,7 @@ class _SaleScreenState extends State<SaleScreen> {
           total: _sale.finalAmount,
           customer: _customer,
           paymentMethod: _paymentMethod,
+          paymentMethods: _paymentMethods,
           onComplete: (customer, paymentMethod, amountPaid) {
             Navigator.of(context).pop();
             _handleCheckoutComplete(customer, paymentMethod, amountPaid);
@@ -436,12 +437,14 @@ class _CheckoutSheet extends StatefulWidget {
   final Money total;
   final Customer? customer;
   final PaymentMethod? paymentMethod;
+  final List<PaymentMethod> paymentMethods;
   final void Function(Customer, PaymentMethod, Money amountPaid) onComplete;
 
   const _CheckoutSheet({
     required this.total,
     this.customer,
     this.paymentMethod,
+    this.paymentMethods = const [],
     required this.onComplete,
   });
 
@@ -549,7 +552,7 @@ class _CheckoutSheetState extends State<_CheckoutSheet> {
                   style: Theme.of(context).textTheme.titleSmall),
               const SizedBox(height: McSpacing.sm),
               PaymentMethodSelector(
-                methods: _paymentMethods,
+                methods: widget.paymentMethods,
                 selected: _paymentMethod,
                 onSelected: (pm) => setState(() {
                   _paymentMethod = pm;
