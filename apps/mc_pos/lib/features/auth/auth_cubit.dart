@@ -128,17 +128,22 @@ class AuthCubit extends Cubit<AuthState> implements AuthSessionProvider {
   }
 
   @override
-  Future<void> onSessionExpired() async {
+  Future<AuthSession?> refreshSession() async {
     final current = state;
-    if (current is! AuthSuccess) return;
-
+    if (current is! AuthSuccess) return null;
     try {
       final refreshed =
           await _authPort.refreshToken(current.session.refreshToken);
       emit(AuthSuccess(refreshed));
+      return refreshed;
     } catch (_) {
-      await _authPort.logout();
-      emit(const AuthInitial());
+      return null;
     }
+  }
+
+  @override
+  Future<void> onSessionExpired() async {
+    await _authPort.logout();
+    emit(const AuthInitial());
   }
 }

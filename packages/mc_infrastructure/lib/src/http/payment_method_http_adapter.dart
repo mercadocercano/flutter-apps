@@ -11,7 +11,7 @@ class PaymentMethodHttpAdapter implements PaymentMethodPort {
   @override
   Future<List<PaymentMethod>> listPaymentMethods() async {
     final response =
-        await _client.get('/payment-method/api/v1/payment-methods');
+        await _client.get('/payment-methods/api/v1/payment-methods');
     final data = response.data as Map<String, dynamic>? ?? {};
     final items =
         data['items'] as List? ?? data['payment_methods'] as List? ?? [];

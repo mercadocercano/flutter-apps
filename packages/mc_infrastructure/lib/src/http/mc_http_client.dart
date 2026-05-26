@@ -17,7 +17,7 @@ class McHttpClient {
           receiveTimeout: const Duration(seconds: 30),
           headers: {'Content-Type': 'application/json'},
         )) {
-    _dio.interceptors.add(_AuthInterceptor(sessionProvider));
+    _dio.interceptors.add(_AuthInterceptor(_dio, sessionProvider));
   }
 
   /// GET con path relativo al baseUrl.
@@ -52,14 +52,19 @@ class McHttpClient {
 /// Interfaz para obtener la sesión actual (token + tenant).
 abstract interface class AuthSessionProvider {
   Future<AuthSession?> getSession();
+  /// Intenta renovar el access token con el refresh token.
+  /// Retorna la nueva sesión o null si falló.
+  Future<AuthSession?> refreshSession();
   Future<void> onSessionExpired();
 }
 
 /// Interceptor que agrega Authorization y X-Tenant-ID a cada request.
+/// En caso de 401, intenta refresh automático y reintenta el request original.
 class _AuthInterceptor extends Interceptor {
+  final Dio _dio;
   final AuthSessionProvider _sessionProvider;
 
-  _AuthInterceptor(this._sessionProvider);
+  _AuthInterceptor(this._dio, this._sessionProvider);
 
   @override
   Future<void> onRequest(
@@ -79,7 +84,19 @@ class _AuthInterceptor extends Interceptor {
     DioException err,
     ErrorInterceptorHandler handler,
   ) async {
-    if (err.response?.statusCode == 401) {
+    final isRetry = err.requestOptions.extra['_retry'] == true;
+    if (err.response?.statusCode == 401 && !isRetry) {
+      final newSession = await _sessionProvider.refreshSession();
+      if (newSession != null) {
+        err.requestOptions.headers['Authorization'] =
+            'Bearer ${newSession.accessToken}';
+        err.requestOptions.extra['_retry'] = true;
+        try {
+          final response = await _dio.fetch(err.requestOptions);
+          handler.resolve(response);
+          return;
+        } catch (_) {}
+      }
       await _sessionProvider.onSessionExpired();
     }
     handler.next(err);
