@@ -99,10 +99,10 @@ class _SaleScreenState extends State<SaleScreen> {
     });
   }
 
-  Future<void> _persistSale() async {
+  Future<void> _persistSale(PosSale sale) async {
     try {
       final salePort = context.read<SalePort>();
-      await salePort.createSale(_sale);
+      await salePort.createSale(sale);
     } catch (e) {
       if (mounted) {
         final msg = _extractErrorMessage(e);
@@ -209,27 +209,32 @@ class _SaleScreenState extends State<SaleScreen> {
     PaymentMethod paymentMethod,
     Money amountPaid,
   ) {
-    setState(() {
-      _customer = customer;
-      _paymentMethod = paymentMethod;
-      _sale = _sale
-          .setCustomer(customer.id)
-          .pay(amountPaid, paymentMethodId: paymentMethod.id);
-    });
+    // Completar la venta con cliente y pago
+    final paidSale = _sale
+        .setCustomer(customer.id)
+        .pay(amountPaid, paymentMethodId: paymentMethod.id);
 
     final completedSale = CompletedSale.fromPosSale(
-      _sale,
+      paidSale,
       customerName: customer.name,
       paymentMethodName: paymentMethod.name,
     );
     widget.onSaleCompleted(completedSale);
-    _persistSale();
+    _persistSale(paidSale); // fire-and-forget con snapshot de la venta
 
+    // Capturar datos para SaleConfirmedScreen antes de limpiar estado
     final saleNumber = '${widget.completedSales.length}';
-    final totalAmount = _sale.finalAmount.amount;
+    final totalAmount = paidSale.finalAmount.amount;
     final receivedAmount = amountPaid.amount;
     final methodName = paymentMethod.name;
     final tenantId = _tenantId;
+
+    // Limpiar carrito inmediatamente — no esperar a que el usuario pulse "Nueva venta"
+    setState(() {
+      _sale = PosSale.start(tenantId: tenantId);
+      _customer = null;
+      _paymentMethod = null;
+    });
 
     Navigator.of(context).push(MaterialPageRoute(
       fullscreenDialog: true,
@@ -240,11 +245,7 @@ class _SaleScreenState extends State<SaleScreen> {
         paymentMethodName: methodName,
         onNewSale: () {
           Navigator.of(context).popUntil((r) => r.isFirst);
-          setState(() {
-            _sale = PosSale.start(tenantId: tenantId);
-            _customer = null;
-            _paymentMethod = null;
-          });
+          // Carrito ya limpio — no necesita setState aquí
         },
       ),
     ));

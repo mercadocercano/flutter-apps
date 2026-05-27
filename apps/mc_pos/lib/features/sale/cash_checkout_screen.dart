@@ -87,7 +87,8 @@ class _CashCheckoutScreenState extends State<CashCheckoutScreen> {
                 code: 'cash',
               ));
     widget.onComplete(customer, method, Money.ars(_received));
-    Navigator.of(context).pop();
+    // No llamar pop() aquí: onComplete pushea SaleConfirmedScreen y ese screen
+    // maneja la navegación con popUntil. Llamar pop() acá popearía SaleConfirmedScreen.
   }
 
   bool get _canConfirm => _received >= widget.sale.finalAmount.amount;
