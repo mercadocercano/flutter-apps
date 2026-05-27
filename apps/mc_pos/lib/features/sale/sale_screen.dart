@@ -101,22 +101,35 @@ class _SaleScreenState extends State<SaleScreen> {
     });
   }
 
-  Future<void> _persistSale(PosSale sale) async {
+  static const _retryDelays = [
+    Duration(minutes: 1),
+    Duration(minutes: 10),
+    Duration(hours: 1),
+  ];
+
+  Future<void> _persistSale(PosSale sale, {int attempt = 0}) async {
     try {
       final salePort = context.read<SalePort>();
       await salePort.createSale(sale);
-      // Notificar que el backend confirmó — remover de pendientes
       if (mounted) widget.onSaleSynced?.call(sale.id);
     } catch (e) {
-      if (mounted) {
+      if (!mounted) return;
+      if (attempt == 0) {
+        // Solo mostrar error en el primer intento
         final msg = _extractErrorMessage(e);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Error al guardar venta: $msg'),
+            content: Text('Error al guardar venta: $msg. Reintentando…'),
             backgroundColor: McColors.error,
           ),
         );
       }
+      if (attempt < _retryDelays.length) {
+        Future.delayed(_retryDelays[attempt], () {
+          if (mounted) _persistSale(sale, attempt: attempt + 1);
+        });
+      }
+      // Si se agotaron los reintentos, la venta queda como pendiente sync
     }
   }
 
