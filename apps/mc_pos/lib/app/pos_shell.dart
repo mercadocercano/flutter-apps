@@ -46,6 +46,12 @@ class _PosShellState extends State<PosShell> {
     });
   }
 
+  void _onSaleSynced(String saleId) {
+    setState(() {
+      _completedSales.removeWhere((s) => s.id == saleId);
+    });
+  }
+
   @override
   void initState() {
     super.initState();
@@ -111,6 +117,7 @@ class _PosShellState extends State<PosShell> {
         SaleScreen(
           completedSales: _completedSales,
           onSaleCompleted: _onSaleCompleted,
+          onSaleSynced: _onSaleSynced,
           onShowHistory: () => Navigator.of(context).push(
             MaterialPageRoute(
               builder: (_) => SalesHistoryScreen(localSales: _completedSales),

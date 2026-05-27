@@ -24,6 +24,7 @@ import '../../widgets/pos/pos_modal.dart';
 class SaleScreen extends StatefulWidget {
   final List<CompletedSale> completedSales;
   final ValueChanged<CompletedSale> onSaleCompleted;
+  final ValueChanged<String>? onSaleSynced; // saleId cuando API confirma
   final VoidCallback? onShowHistory;
   final VoidCallback? onShowCashClose;
 
@@ -31,6 +32,7 @@ class SaleScreen extends StatefulWidget {
     super.key,
     required this.completedSales,
     required this.onSaleCompleted,
+    this.onSaleSynced,
     this.onShowHistory,
     this.onShowCashClose,
   });
@@ -103,6 +105,8 @@ class _SaleScreenState extends State<SaleScreen> {
     try {
       final salePort = context.read<SalePort>();
       await salePort.createSale(sale);
+      // Notificar que el backend confirmó — remover de pendientes
+      if (mounted) widget.onSaleSynced?.call(sale.id);
     } catch (e) {
       if (mounted) {
         final msg = _extractErrorMessage(e);
