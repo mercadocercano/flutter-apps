@@ -124,12 +124,12 @@ class _SaleScreenState extends State<SaleScreen> {
           ),
         );
       }
-      if (attempt < _retryDelays.length) {
-        Future.delayed(_retryDelays[attempt], () {
-          if (mounted) _persistSale(sale, attempt: attempt + 1);
-        });
-      }
-      // Si se agotaron los reintentos, la venta queda como pendiente sync
+      final delay = attempt < _retryDelays.length
+          ? _retryDelays[attempt]
+          : _retryDelays.last; // 1hr indefinidamente hasta sincronizar
+      Future.delayed(delay, () {
+        if (mounted) _persistSale(sale, attempt: attempt + 1);
+      });
     }
   }
 
