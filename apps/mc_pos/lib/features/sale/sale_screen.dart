@@ -303,13 +303,12 @@ class _SaleScreenState extends State<SaleScreen> {
             mainAxisSize: MainAxisSize.min,
             children: [
               SyncPill(status: PosSyncStatus.synced),
-              if (widget.completedSales.isNotEmpty)
-                IconButton(
-                  icon: const Icon(Icons.receipt_long),
-                  color: McColors.textFg2,
-                  onPressed: widget.onShowHistory,
-                  tooltip: 'Ventas del día',
-                ),
+              IconButton(
+                icon: const Icon(Icons.receipt_long),
+                color: McColors.textFg2,
+                onPressed: widget.onShowHistory,
+                tooltip: 'Ventas del día',
+              ),
               IconButton(
                 icon: const Icon(Icons.point_of_sale),
                 color: McColors.textFg2,
@@ -370,13 +369,12 @@ class _SaleScreenState extends State<SaleScreen> {
             mainAxisSize: MainAxisSize.min,
             children: [
               SyncPill(status: PosSyncStatus.synced),
-              if (widget.completedSales.isNotEmpty)
-                IconButton(
-                  icon: const Icon(Icons.receipt_long),
-                  color: McColors.textFg2,
-                  onPressed: widget.onShowHistory,
-                  tooltip: 'Ventas del día',
-                ),
+              IconButton(
+                icon: const Icon(Icons.receipt_long),
+                color: McColors.textFg2,
+                onPressed: widget.onShowHistory,
+                tooltip: 'Ventas del día',
+              ),
               IconButton(
                 icon: const Icon(Icons.point_of_sale),
                 color: McColors.textFg2,
