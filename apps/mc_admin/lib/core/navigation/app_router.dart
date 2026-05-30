@@ -456,6 +456,9 @@ class AppRouter {
                       unverify: UnverifyBrandUseCase(
                         MarketplaceBrandRepositoryImpl(KongClient()),
                       ),
+                      validateName: ValidateBrandNameUseCase(
+                        MarketplaceBrandRepositoryImpl(KongClient()),
+                      ),
                     ),
                   ),
                 ],
@@ -553,6 +556,9 @@ class AppRouter {
                         MarketplaceBrandRepositoryImpl(KongClient()),
                       ),
                       unverify: UnverifyBrandUseCase(
+                        MarketplaceBrandRepositoryImpl(KongClient()),
+                      ),
+                      validateName: ValidateBrandNameUseCase(
                         MarketplaceBrandRepositoryImpl(KongClient()),
                       ),
                     ),

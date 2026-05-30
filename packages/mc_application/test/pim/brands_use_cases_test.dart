@@ -209,4 +209,62 @@ void main() {
       expect(() => useCase.execute('missing'), throwsException);
     });
   });
+
+  group('ValidateBrandNameUseCase', () {
+    test('retorna true si no hay marcas con ese nombre', () async {
+      when(() => repository.getAll(1, 5, name: 'Nike'))
+          .thenAnswer((_) async => _buildPage(0));
+      final useCase = ValidateBrandNameUseCase(repository);
+
+      final available = await useCase.execute('Nike');
+
+      expect(available, isTrue);
+    });
+
+    test('retorna false si ya existe una marca con el mismo nombre', () async {
+      final existing = _buildBrand(id: 'brand-existing')
+          ..name; // id=brand-existing, name=Nike
+      final page = PaginatedResult<MarketplaceBrand>(
+        items: [_buildBrand(id: 'brand-existing')],
+        totalCount: 1,
+        page: 1,
+        pageSize: 5,
+        totalPages: 1,
+      );
+      when(() => repository.getAll(1, 5, name: 'Nike'))
+          .thenAnswer((_) async => page);
+      final useCase = ValidateBrandNameUseCase(repository);
+
+      final available = await useCase.execute('Nike');
+
+      expect(available, isFalse);
+    });
+
+    test('ignora la marca actual al editar (excludeId)', () async {
+      final page = PaginatedResult<MarketplaceBrand>(
+        items: [_buildBrand(id: 'brand-1')],
+        totalCount: 1,
+        page: 1,
+        pageSize: 5,
+        totalPages: 1,
+      );
+      when(() => repository.getAll(1, 5, name: 'Nike'))
+          .thenAnswer((_) async => page);
+      final useCase = ValidateBrandNameUseCase(repository);
+
+      // brand-1 es la marca que estamos editando → disponible
+      final available = await useCase.execute('Nike', excludeId: 'brand-1');
+
+      expect(available, isTrue);
+    });
+
+    test('retorna true para nombre vacío sin llamar al repositorio', () async {
+      final useCase = ValidateBrandNameUseCase(repository);
+
+      final available = await useCase.execute('  ');
+
+      expect(available, isTrue);
+      verifyNever(() => repository.getAll(any(), any()));
+    });
+  });
 }

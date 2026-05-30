@@ -2,7 +2,6 @@ import 'package:dio/dio.dart';
 import 'package:mc_domain/mc_domain.dart';
 
 import '../../http/admin_http_client.dart';
-import '../../iam/iam_mappers.dart';
 import 'brand_mappers.dart';
 
 /// Implementación HTTP de MarketplaceBrandRepository.
@@ -28,7 +27,7 @@ class MarketplaceBrandRepositoryImpl implements MarketplaceBrandRepository {
       if (name != null && name.isNotEmpty) 'name': name,
       if (verificationStatus != null)
         'status': verificationStatus.toApiString(),
-      if (isActive case final active?) 'active': active,
+      if (isActive != null) 'active': isActive,
     };
 
     final response = await _client.get<Map<String, dynamic>>(
@@ -36,7 +35,7 @@ class MarketplaceBrandRepositoryImpl implements MarketplaceBrandRepository {
       queryParameters: params,
     );
 
-    return paginatedFromJson(_requireData(response), brandFromJson);
+    return paginatedBrandsFromJson(_requireData(response));
   }
 
   @override

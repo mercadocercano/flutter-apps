@@ -1,3 +1,4 @@
+import 'package:dio/dio.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:mc_application/mc_application.dart';
 import 'package:mc_domain/mc_domain.dart';
@@ -32,6 +33,12 @@ class UnverifyBrandFormEvent extends BrandFormEvent {
   UnverifyBrandFormEvent(this.id);
 }
 
+class ValidateBrandNameEvent extends BrandFormEvent {
+  final String name;
+  final String? excludeId;
+  ValidateBrandNameEvent(this.name, {this.excludeId});
+}
+
 // --- States ---
 
 abstract class BrandFormState {}
@@ -52,6 +59,11 @@ class BrandFormError extends BrandFormState {
   BrandFormError(this.message);
 }
 
+class BrandFormNameValidated extends BrandFormState {
+  final bool isConflict;
+  BrandFormNameValidated({required this.isConflict});
+}
+
 // --- Bloc ---
 
 class BrandFormBloc extends Bloc<BrandFormEvent, BrandFormState> {
@@ -60,6 +72,7 @@ class BrandFormBloc extends Bloc<BrandFormEvent, BrandFormState> {
   final DeleteBrandUseCase _delete;
   final VerifyBrandUseCase _verify;
   final UnverifyBrandUseCase _unverify;
+  final ValidateBrandNameUseCase? _validateName;
 
   BrandFormBloc({
     required CreateBrandUseCase create,
@@ -67,17 +80,20 @@ class BrandFormBloc extends Bloc<BrandFormEvent, BrandFormState> {
     required DeleteBrandUseCase delete,
     required VerifyBrandUseCase verify,
     required UnverifyBrandUseCase unverify,
+    ValidateBrandNameUseCase? validateName,
   })  : _create = create,
         _update = update,
         _delete = delete,
         _verify = verify,
         _unverify = unverify,
+        _validateName = validateName,
         super(BrandFormInitial()) {
     on<SubmitCreateBrandEvent>(_onCreate);
     on<SubmitUpdateBrandEvent>(_onUpdate);
     on<DeleteBrandFormEvent>(_onDelete);
     on<VerifyBrandFormEvent>(_onVerify);
     on<UnverifyBrandFormEvent>(_onUnverify);
+    on<ValidateBrandNameEvent>(_onValidateName);
   }
 
   Future<void> _onCreate(
@@ -88,6 +104,12 @@ class BrandFormBloc extends Bloc<BrandFormEvent, BrandFormState> {
     try {
       final entity = await _create.execute(event.params);
       emit(BrandFormSuccess(entity: entity));
+    } on DioException catch (e) {
+      if (e.response?.statusCode == 409) {
+        emit(BrandFormError('Ya existe una marca con ese nombre'));
+      } else {
+        emit(BrandFormError('Error al crear marca: $e'));
+      }
     } catch (e) {
       emit(BrandFormError('Error al crear marca: $e'));
     }
@@ -101,6 +123,12 @@ class BrandFormBloc extends Bloc<BrandFormEvent, BrandFormState> {
     try {
       final entity = await _update.execute(event.id, event.params);
       emit(BrandFormSuccess(entity: entity));
+    } on DioException catch (e) {
+      if (e.response?.statusCode == 409) {
+        emit(BrandFormError('Ya existe una marca con ese nombre'));
+      } else {
+        emit(BrandFormError('Error al actualizar marca: $e'));
+      }
     } catch (e) {
       emit(BrandFormError('Error al actualizar marca: $e'));
     }
@@ -114,6 +142,13 @@ class BrandFormBloc extends Bloc<BrandFormEvent, BrandFormState> {
     try {
       await _delete.execute(event.id);
       emit(BrandFormDeleted());
+    } on DioException catch (e) {
+      if (e.response?.statusCode == 409) {
+        emit(BrandFormError(
+            'No se puede eliminar: la marca tiene productos asociados'));
+      } else {
+        emit(BrandFormError('Error al eliminar marca: $e'));
+      }
     } catch (e) {
       emit(BrandFormError('Error al eliminar marca: $e'));
     }
@@ -142,6 +177,21 @@ class BrandFormBloc extends Bloc<BrandFormEvent, BrandFormState> {
       emit(BrandFormSuccess(entity: entity));
     } catch (e) {
       emit(BrandFormError('Error al desverificar marca: $e'));
+    }
+  }
+
+  Future<void> _onValidateName(
+    ValidateBrandNameEvent event,
+    Emitter<BrandFormState> emit,
+  ) async {
+    final validator = _validateName;
+    if (validator == null) return;
+    try {
+      final available =
+          await validator.execute(event.name, excludeId: event.excludeId);
+      emit(BrandFormNameValidated(isConflict: !available));
+    } catch (_) {
+      // Validación de nombre es best-effort; no bloquear el formulario
     }
   }
 }

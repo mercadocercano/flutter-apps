@@ -28,10 +28,14 @@ class _BrandFormScreenState extends State<BrandFormScreen> {
   final _backgroundColorController = TextEditingController();
   final _textColorController = TextEditingController();
   final _typographyController = TextEditingController();
+  final _nameFocusNode = FocusNode();
+
+  String? _nameConflictError;
 
   @override
   void initState() {
     super.initState();
+    _nameFocusNode.addListener(_onNameFocusChange);
     final brand = widget.initialBrand;
     if (brand != null) {
       _nameController.text = brand.name;
@@ -44,8 +48,21 @@ class _BrandFormScreenState extends State<BrandFormScreen> {
     }
   }
 
+  void _onNameFocusChange() {
+    if (!_nameFocusNode.hasFocus) {
+      final name = _nameController.text.trim();
+      if (name.isNotEmpty) {
+        context.read<BrandFormBloc>().add(
+              ValidateBrandNameEvent(name, excludeId: widget.brandId),
+            );
+      }
+    }
+  }
+
   @override
   void dispose() {
+    _nameFocusNode.removeListener(_onNameFocusChange);
+    _nameFocusNode.dispose();
     _nameController.dispose();
     _descriptionController.dispose();
     _logoUrlController.dispose();
@@ -60,6 +77,7 @@ class _BrandFormScreenState extends State<BrandFormScreen> {
       text.trim().isEmpty ? null : text.trim();
 
   void _save() {
+    if (_nameConflictError != null) return;
     if (!_formKey.currentState!.validate()) return;
 
     if (widget.isEditing) {
@@ -106,6 +124,12 @@ class _BrandFormScreenState extends State<BrandFormScreen> {
           context.go('/pim/brands');
         } else if (state is BrandFormError) {
           AdminSnackbars.showError(context, state.message);
+        } else if (state is BrandFormNameValidated) {
+          setState(() {
+            _nameConflictError = state.isConflict
+                ? 'Ya existe una marca con ese nombre'
+                : null;
+          });
         }
       },
       child: BlocBuilder<BrandFormBloc, BrandFormState>(
@@ -117,17 +141,12 @@ class _BrandFormScreenState extends State<BrandFormScreen> {
           return AdminCrudForm(
             formKey: _formKey,
             title: widget.isEditing ? 'Editar Marca' : 'Nueva Marca',
-            isLoading: isLoading,
+            isLoading: isLoading || _nameConflictError != null,
             errorMessage: errorMsg,
             onSave: _save,
             onCancel: () => context.pop(),
             children: [
-              _buildTextField(
-                controller: _nameController,
-                label: 'Nombre',
-                required: true,
-                enabled: !isLoading,
-              ),
+              _buildNameField(enabled: !isLoading),
               const SizedBox(height: 16),
               _buildTextField(
                 controller: _descriptionController,
@@ -182,6 +201,23 @@ class _BrandFormScreenState extends State<BrandFormScreen> {
           );
         },
       ),
+    );
+  }
+
+  Widget _buildNameField({required bool enabled}) {
+    return TextFormField(
+      controller: _nameController,
+      focusNode: _nameFocusNode,
+      enabled: enabled,
+      decoration: InputDecoration(
+        labelText: 'Nombre *',
+        border: const OutlineInputBorder(),
+        errorText: _nameConflictError,
+      ),
+      validator: (v) {
+        if (v == null || v.trim().isEmpty) return 'Nombre es obligatorio';
+        return null;
+      },
     );
   }
 

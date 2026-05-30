@@ -27,6 +27,7 @@ export 'src/pim/brands/update_brand_use_case.dart';
 export 'src/pim/brands/delete_brand_use_case.dart';
 export 'src/pim/brands/verify_brand_use_case.dart';
 export 'src/pim/brands/unverify_brand_use_case.dart';
+export 'src/pim/brands/validate_brand_name_use_case.dart';
 
 // Ports
 export 'src/ports/auth_port.dart';

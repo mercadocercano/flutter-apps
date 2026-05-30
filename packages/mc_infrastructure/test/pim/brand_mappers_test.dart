@@ -151,4 +151,76 @@ void main() {
       expect(result.isEmpty, isTrue);
     });
   });
+
+  group('paginatedBrandsFromJson — formato real pim-service', () {
+    test('parsea brands key y pagination object correctamente', () {
+      final json = <String, dynamic>{
+        'brands': [baseJson],
+        'pagination': {
+          'offset': 0,
+          'limit': 20,
+          'total': 100,
+          'has_next': true,
+          'has_prev': false,
+          'total_pages': 5,
+        },
+      };
+
+      final result = paginatedBrandsFromJson(json);
+
+      expect(result.items.length, 1);
+      expect(result.items.first.name, 'Nike');
+      expect(result.totalCount, 100);
+      expect(result.pageSize, 20);
+      expect(result.totalPages, 5);
+      expect(result.page, 1); // offset=0, limit=20 → page 1
+    });
+
+    test('calcula página correctamente desde offset', () {
+      final json = <String, dynamic>{
+        'brands': <dynamic>[],
+        'pagination': {
+          'offset': 40,
+          'limit': 20,
+          'total': 100,
+          'has_next': true,
+          'has_prev': true,
+          'total_pages': 5,
+        },
+      };
+
+      final result = paginatedBrandsFromJson(json);
+
+      expect(result.page, 3); // offset=40, limit=20 → page 3
+      expect(result.items, isEmpty);
+    });
+
+    test('maneja brands null o ausente con lista vacía', () {
+      final json = <String, dynamic>{
+        'pagination': {
+          'offset': 0,
+          'limit': 10,
+          'total': 0,
+          'total_pages': 0,
+        },
+      };
+
+      final result = paginatedBrandsFromJson(json);
+
+      expect(result.items, isEmpty);
+      expect(result.totalCount, 0);
+    });
+
+    test('maneja pagination ausente con valores por defecto', () {
+      final json = <String, dynamic>{
+        'brands': [baseJson],
+      };
+
+      final result = paginatedBrandsFromJson(json);
+
+      expect(result.items.length, 1);
+      expect(result.pageSize, 10);
+      expect(result.totalPages, 1);
+    });
+  });
 }

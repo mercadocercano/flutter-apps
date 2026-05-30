@@ -13,6 +13,8 @@ class MockUpdateBrandUseCase extends Mock implements UpdateBrandUseCase {}
 class MockDeleteBrandUseCase extends Mock implements DeleteBrandUseCase {}
 class MockVerifyBrandUseCase extends Mock implements VerifyBrandUseCase {}
 class MockUnverifyBrandUseCase extends Mock implements UnverifyBrandUseCase {}
+class MockValidateBrandNameUseCase extends Mock
+    implements ValidateBrandNameUseCase {}
 
 MarketplaceBrand _buildBrand({String id = 'brand-1'}) {
   final now = DateTime(2024, 6, 15);
@@ -167,6 +169,7 @@ void main() {
     late MockDeleteBrandUseCase deleteUseCase;
     late MockVerifyBrandUseCase verifyUseCase;
     late MockUnverifyBrandUseCase unverifyUseCase;
+    late MockValidateBrandNameUseCase validateNameUseCase;
 
     setUp(() {
       createUseCase = MockCreateBrandUseCase();
@@ -174,14 +177,16 @@ void main() {
       deleteUseCase = MockDeleteBrandUseCase();
       verifyUseCase = MockVerifyBrandUseCase();
       unverifyUseCase = MockUnverifyBrandUseCase();
+      validateNameUseCase = MockValidateBrandNameUseCase();
     });
 
-    BrandFormBloc buildBloc() => BrandFormBloc(
+    BrandFormBloc buildBloc({bool withValidate = false}) => BrandFormBloc(
           create: createUseCase,
           update: updateUseCase,
           delete: deleteUseCase,
           verify: verifyUseCase,
           unverify: unverifyUseCase,
+          validateName: withValidate ? validateNameUseCase : null,
         );
 
     blocTest<BrandFormBloc, BrandFormState>(
@@ -299,6 +304,41 @@ void main() {
         isA<BrandFormSubmitting>(),
         isA<BrandFormError>(),
       ],
+    );
+
+    blocTest<BrandFormBloc, BrandFormState>(
+      'ValidateBrandNameEvent emite NameValidated(isConflict: false) si nombre disponible',
+      build: () {
+        when(() => validateNameUseCase.execute('Nike', excludeId: null))
+            .thenAnswer((_) async => true);
+        return buildBloc(withValidate: true);
+      },
+      act: (bloc) => bloc.add(ValidateBrandNameEvent('Nike')),
+      expect: () => [
+        isA<BrandFormNameValidated>()
+            .having((s) => s.isConflict, 'isConflict', isFalse),
+      ],
+    );
+
+    blocTest<BrandFormBloc, BrandFormState>(
+      'ValidateBrandNameEvent emite NameValidated(isConflict: true) si nombre duplicado',
+      build: () {
+        when(() => validateNameUseCase.execute('Nike', excludeId: null))
+            .thenAnswer((_) async => false);
+        return buildBloc(withValidate: true);
+      },
+      act: (bloc) => bloc.add(ValidateBrandNameEvent('Nike')),
+      expect: () => [
+        isA<BrandFormNameValidated>()
+            .having((s) => s.isConflict, 'isConflict', isTrue),
+      ],
+    );
+
+    blocTest<BrandFormBloc, BrandFormState>(
+      'ValidateBrandNameEvent sin validateName no emite estado',
+      build: () => buildBloc(),
+      act: (bloc) => bloc.add(ValidateBrandNameEvent('Nike')),
+      expect: () => <BrandFormState>[],
     );
   });
 }
