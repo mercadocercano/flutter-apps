@@ -18,6 +18,11 @@ export 'src/product/category.dart';
 export 'src/sale/pos_sale.dart';
 export 'src/sale/pos_sale_item.dart';
 
+// PIM — Brands (admin marketplace)
+export 'src/pim/brand/marketplace_brand.dart';
+export 'src/pim/brand/brand_repository.dart';
+export 'src/pim/brand/brand_params.dart';
+
 // IAM domain
 export 'src/iam/paginated_result.dart';
 export 'src/iam/tenant.dart';
