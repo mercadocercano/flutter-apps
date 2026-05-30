@@ -19,6 +19,15 @@ export 'src/iam/plans/create_plan_use_case.dart';
 export 'src/iam/plans/update_plan_use_case.dart';
 export 'src/iam/plans/delete_plan_use_case.dart';
 
+// PIM — Brands use cases (S008)
+export 'src/pim/brands/get_brands_use_case.dart';
+export 'src/pim/brands/get_brand_use_case.dart';
+export 'src/pim/brands/create_brand_use_case.dart';
+export 'src/pim/brands/update_brand_use_case.dart';
+export 'src/pim/brands/delete_brand_use_case.dart';
+export 'src/pim/brands/verify_brand_use_case.dart';
+export 'src/pim/brands/unverify_brand_use_case.dart';
+
 // Ports
 export 'src/ports/auth_port.dart';
 export 'src/ports/catalog_port.dart';
