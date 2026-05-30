@@ -1,0 +1,24 @@
+{
+  "name": "mc_admin",
+  "version": "1.0.0",
+  "description": "- Framework: Flutter 3.24+ - Navigation: go_router - State: flutter_bloc - API Client: dio - Persistence: flutter_secure_storage",
+  "main": "index.js",
+  "directories": {
+    "lib": "lib",
+    "test": "test"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "e2e": "playwright test",
+    "e2e:serve": "npx serve build/web -p 8888 -s",
+    "e2e:build": "flutter build web --release",
+    "e2e:install": "playwright install chromium"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "devDependencies": {
+    "@playwright/test": "^1.60.0"
+  }
+}
