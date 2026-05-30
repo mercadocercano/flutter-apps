@@ -148,12 +148,12 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
     if (confirmed != true || !mounted) return;
     try {
       final port = context.read<CategoryPort>();
-      await port.deleteCategory(cat.id);
       if (hasChildren) {
         for (final child in _childrenOf(cat.id)) {
           await port.deleteCategory(child.id);
         }
       }
+      await port.deleteCategory(cat.id);
       _load();
     } catch (e) {
       if (mounted) {
