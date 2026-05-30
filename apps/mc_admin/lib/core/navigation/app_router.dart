@@ -6,14 +6,19 @@ import 'admin_shell.dart';
 
 // Screens existentes
 import '../../features/auth/presentation/screens/login_screen.dart';
-import '../../features/brands/presentation/screens/brands_list_screen.dart';
-import '../../features/brands/presentation/screens/brand_form_screen.dart';
 import '../../features/categories/presentation/screens/categories_tree_screen.dart';
 import '../../features/categories/presentation/screens/category_form_screen.dart';
 import '../../features/business_types/presentation/screens/business_types_list_screen.dart';
 import '../../features/global_products/presentation/screens/global_products_screen.dart';
 import '../../features/global_products/presentation/screens/global_product_detail_screen.dart';
 import '../../features/dev_metrics/presentation/screens/dev_metrics_screen.dart';
+
+// PIM Brands screens (S008)
+import '../../features/pim/brands/brands_screen.dart';
+import '../../features/pim/brands/brand_form_screen.dart';
+import '../../features/pim/brands/brand_detail_screen.dart';
+import '../../features/pim/brands/blocs/brands_bloc.dart';
+import '../../features/pim/brands/blocs/brand_form_bloc.dart';
 
 // IAM screens (S007)
 import '../../features/iam/tenants/tenants_screen.dart';
@@ -424,22 +429,136 @@ class AppRouter {
           GoRoute(
             path: '/pim/brands',
             name: 'pim-brands',
-            pageBuilder: (context, state) =>
-                const NoTransitionPage(child: BrandsListScreen()),
+            pageBuilder: (context, state) => NoTransitionPage(
+              child: MultiBlocProvider(
+                providers: [
+                  BlocProvider(
+                    create: (_) => BrandsBloc(
+                      getAll: GetBrandsUseCase(
+                        MarketplaceBrandRepositoryImpl(KongClient()),
+                      ),
+                    )..add(LoadBrandsEvent()),
+                  ),
+                  BlocProvider(
+                    create: (_) => BrandFormBloc(
+                      create: CreateBrandUseCase(
+                        MarketplaceBrandRepositoryImpl(KongClient()),
+                      ),
+                      update: UpdateBrandUseCase(
+                        MarketplaceBrandRepositoryImpl(KongClient()),
+                      ),
+                      delete: DeleteBrandUseCase(
+                        MarketplaceBrandRepositoryImpl(KongClient()),
+                      ),
+                      verify: VerifyBrandUseCase(
+                        MarketplaceBrandRepositoryImpl(KongClient()),
+                      ),
+                      unverify: UnverifyBrandUseCase(
+                        MarketplaceBrandRepositoryImpl(KongClient()),
+                      ),
+                    ),
+                  ),
+                ],
+                child: const BrandsScreen(),
+              ),
+            ),
             routes: [
               GoRoute(
                 path: 'new',
                 name: 'pim-brand-new',
                 parentNavigatorKey: _rootNavigatorKey,
-                builder: (context, state) => const BrandFormScreen(),
+                builder: (context, state) => BlocProvider(
+                  create: (_) => BrandFormBloc(
+                    create: CreateBrandUseCase(
+                      MarketplaceBrandRepositoryImpl(KongClient()),
+                    ),
+                    update: UpdateBrandUseCase(
+                      MarketplaceBrandRepositoryImpl(KongClient()),
+                    ),
+                    delete: DeleteBrandUseCase(
+                      MarketplaceBrandRepositoryImpl(KongClient()),
+                    ),
+                    verify: VerifyBrandUseCase(
+                      MarketplaceBrandRepositoryImpl(KongClient()),
+                    ),
+                    unverify: UnverifyBrandUseCase(
+                      MarketplaceBrandRepositoryImpl(KongClient()),
+                    ),
+                  ),
+                  child: const BrandFormScreen(),
+                ),
+              ),
+              GoRoute(
+                path: ':id',
+                name: 'pim-brand-detail',
+                parentNavigatorKey: _rootNavigatorKey,
+                builder: (context, state) {
+                  final id = state.pathParameters['id']!;
+                  return MultiBlocProvider(
+                    providers: [
+                      BlocProvider(
+                        create: (_) => BrandsBloc(
+                          getAll: GetBrandsUseCase(
+                            MarketplaceBrandRepositoryImpl(KongClient()),
+                          ),
+                        ),
+                      ),
+                      BlocProvider(
+                        create: (_) => BrandFormBloc(
+                          create: CreateBrandUseCase(
+                            MarketplaceBrandRepositoryImpl(KongClient()),
+                          ),
+                          update: UpdateBrandUseCase(
+                            MarketplaceBrandRepositoryImpl(KongClient()),
+                          ),
+                          delete: DeleteBrandUseCase(
+                            MarketplaceBrandRepositoryImpl(KongClient()),
+                          ),
+                          verify: VerifyBrandUseCase(
+                            MarketplaceBrandRepositoryImpl(KongClient()),
+                          ),
+                          unverify: UnverifyBrandUseCase(
+                            MarketplaceBrandRepositoryImpl(KongClient()),
+                          ),
+                        ),
+                      ),
+                    ],
+                    child: BrandDetailScreen(
+                      brandId: id,
+                      getBrand: GetBrandUseCase(
+                        MarketplaceBrandRepositoryImpl(KongClient()),
+                      ),
+                    ),
+                  );
+                },
               ),
               GoRoute(
                 path: ':id/edit',
                 name: 'pim-brand-edit',
                 parentNavigatorKey: _rootNavigatorKey,
-                builder: (context, state) => BrandFormScreen(
-                  brandId: state.pathParameters['id'],
-                ),
+                builder: (context, state) {
+                  final id = state.pathParameters['id']!;
+                  return BlocProvider(
+                    create: (_) => BrandFormBloc(
+                      create: CreateBrandUseCase(
+                        MarketplaceBrandRepositoryImpl(KongClient()),
+                      ),
+                      update: UpdateBrandUseCase(
+                        MarketplaceBrandRepositoryImpl(KongClient()),
+                      ),
+                      delete: DeleteBrandUseCase(
+                        MarketplaceBrandRepositoryImpl(KongClient()),
+                      ),
+                      verify: VerifyBrandUseCase(
+                        MarketplaceBrandRepositoryImpl(KongClient()),
+                      ),
+                      unverify: UnverifyBrandUseCase(
+                        MarketplaceBrandRepositoryImpl(KongClient()),
+                      ),
+                    ),
+                    child: BrandFormScreen(brandId: id),
+                  );
+                },
               ),
             ],
           ),
