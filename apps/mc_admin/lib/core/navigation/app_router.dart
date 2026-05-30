@@ -15,7 +15,25 @@ import '../../features/global_products/presentation/screens/global_products_scre
 import '../../features/global_products/presentation/screens/global_product_detail_screen.dart';
 import '../../features/dev_metrics/presentation/screens/dev_metrics_screen.dart';
 
-// Placeholder screens para S007-S014 (se reemplazan cuando se implementen)
+// IAM screens (S007)
+import '../../features/iam/tenants/tenants_screen.dart';
+import '../../features/iam/tenants/tenant_form_screen.dart';
+import '../../features/iam/tenants/tenant_detail_screen.dart';
+import '../../features/iam/tenants/tenants_bloc.dart';
+import '../../features/iam/tenants/tenant_form_bloc.dart';
+import '../../features/iam/roles/roles_screen.dart';
+import '../../features/iam/roles/role_form_screen.dart';
+import '../../features/iam/roles/roles_bloc.dart';
+import '../../features/iam/roles/role_form_bloc.dart';
+import '../../features/iam/plans/plans_screen.dart';
+import '../../features/iam/plans/plan_form_screen.dart';
+import '../../features/iam/plans/plans_bloc.dart';
+import '../../features/iam/plans/plan_form_bloc.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:mc_application/mc_application.dart';
+import 'package:mc_infrastructure/mc_infrastructure.dart';
+
+// Placeholder screens para S008-S014 (se reemplazan cuando se implementen)
 import '../placeholders/placeholder_screen.dart';
 
 final GlobalKey<NavigatorState> _rootNavigatorKey =
@@ -78,54 +96,301 @@ class AppRouter {
           GoRoute(
             path: '/iam/tenants',
             name: 'iam-tenants',
-            pageBuilder: (context, state) => const NoTransitionPage(
-              child: PlaceholderScreen(title: 'Tenants', spec: 'S007'),
+            pageBuilder: (context, state) => NoTransitionPage(
+              child: MultiBlocProvider(
+                providers: [
+                  BlocProvider(
+                    create: (_) => TenantsBloc(
+                      getAll: GetTenantsUseCase(
+                        TenantRepositoryImpl(KongClient()),
+                      ),
+                    )..add(LoadTenantsEvent()),
+                  ),
+                  BlocProvider(
+                    create: (_) => TenantFormBloc(
+                      create: CreateTenantUseCase(
+                        TenantRepositoryImpl(KongClient()),
+                      ),
+                      update: UpdateTenantUseCase(
+                        TenantRepositoryImpl(KongClient()),
+                      ),
+                      delete: DeleteTenantUseCase(
+                        TenantRepositoryImpl(KongClient()),
+                      ),
+                    ),
+                  ),
+                ],
+                child: const TenantsScreen(),
+              ),
             ),
             routes: [
               GoRoute(
                 path: 'new',
                 name: 'iam-tenant-new',
                 parentNavigatorKey: _rootNavigatorKey,
-                builder: (context, state) => const PlaceholderScreen(
-                  title: 'Nuevo Tenant',
-                  spec: 'S007',
+                builder: (context, state) => BlocProvider(
+                  create: (_) => TenantFormBloc(
+                    create: CreateTenantUseCase(
+                      TenantRepositoryImpl(KongClient()),
+                    ),
+                    update: UpdateTenantUseCase(
+                      TenantRepositoryImpl(KongClient()),
+                    ),
+                    delete: DeleteTenantUseCase(
+                      TenantRepositoryImpl(KongClient()),
+                    ),
+                  ),
+                  child: const TenantFormScreen(),
                 ),
+              ),
+              GoRoute(
+                path: ':id',
+                name: 'iam-tenant-detail',
+                parentNavigatorKey: _rootNavigatorKey,
+                builder: (context, state) {
+                  final id = state.pathParameters['id']!;
+                  return MultiBlocProvider(
+                    providers: [
+                      BlocProvider(
+                        create: (_) => TenantsBloc(
+                          getAll: GetTenantsUseCase(
+                            TenantRepositoryImpl(KongClient()),
+                          ),
+                        )..add(LoadTenantsEvent()),
+                      ),
+                      BlocProvider(
+                        create: (_) => TenantFormBloc(
+                          create: CreateTenantUseCase(
+                            TenantRepositoryImpl(KongClient()),
+                          ),
+                          update: UpdateTenantUseCase(
+                            TenantRepositoryImpl(KongClient()),
+                          ),
+                          delete: DeleteTenantUseCase(
+                            TenantRepositoryImpl(KongClient()),
+                          ),
+                        ),
+                      ),
+                    ],
+                    child: TenantDetailScreen(tenantId: id),
+                  );
+                },
               ),
               GoRoute(
                 path: ':id/edit',
                 name: 'iam-tenant-edit',
                 parentNavigatorKey: _rootNavigatorKey,
-                builder: (context, state) => PlaceholderScreen(
-                  title: 'Editar Tenant ${state.pathParameters['id']}',
-                  spec: 'S007',
-                ),
+                builder: (context, state) {
+                  final id = state.pathParameters['id']!;
+                  return BlocProvider(
+                    create: (_) => TenantFormBloc(
+                      create: CreateTenantUseCase(
+                        TenantRepositoryImpl(KongClient()),
+                      ),
+                      update: UpdateTenantUseCase(
+                        TenantRepositoryImpl(KongClient()),
+                      ),
+                      delete: DeleteTenantUseCase(
+                        TenantRepositoryImpl(KongClient()),
+                      ),
+                    ),
+                    child: TenantFormScreen(tenantId: id),
+                  );
+                },
               ),
             ],
           ),
           GoRoute(
             path: '/iam/roles',
             name: 'iam-roles',
-            pageBuilder: (context, state) => const NoTransitionPage(
-              child: PlaceholderScreen(title: 'Roles', spec: 'S007'),
+            pageBuilder: (context, state) => NoTransitionPage(
+              child: MultiBlocProvider(
+                providers: [
+                  BlocProvider(
+                    create: (_) => RolesBloc(
+                      getAll: GetRolesUseCase(
+                        RoleRepositoryImpl(KongClient()),
+                      ),
+                    )..add(LoadRolesEvent()),
+                  ),
+                  BlocProvider(
+                    create: (_) => RoleFormBloc(
+                      create: CreateRoleUseCase(
+                        RoleRepositoryImpl(KongClient()),
+                      ),
+                      update: UpdateRoleUseCase(
+                        RoleRepositoryImpl(KongClient()),
+                      ),
+                      delete: DeleteRoleUseCase(
+                        RoleRepositoryImpl(KongClient()),
+                      ),
+                    ),
+                  ),
+                ],
+                child: const RolesScreen(),
+              ),
             ),
             routes: [
               GoRoute(
                 path: 'new',
                 name: 'iam-role-new',
                 parentNavigatorKey: _rootNavigatorKey,
-                builder: (context, state) => const PlaceholderScreen(
-                  title: 'Nuevo Rol',
-                  spec: 'S007',
+                builder: (context, state) => MultiBlocProvider(
+                  providers: [
+                    BlocProvider(
+                      create: (_) => RolesBloc(
+                        getAll: GetRolesUseCase(
+                          RoleRepositoryImpl(KongClient()),
+                        ),
+                      ),
+                    ),
+                    BlocProvider(
+                      create: (_) => RoleFormBloc(
+                        create: CreateRoleUseCase(
+                          RoleRepositoryImpl(KongClient()),
+                        ),
+                        update: UpdateRoleUseCase(
+                          RoleRepositoryImpl(KongClient()),
+                        ),
+                        delete: DeleteRoleUseCase(
+                          RoleRepositoryImpl(KongClient()),
+                        ),
+                      ),
+                    ),
+                  ],
+                  child: const RoleFormScreen(),
                 ),
+              ),
+              GoRoute(
+                path: ':id/edit',
+                name: 'iam-role-edit',
+                parentNavigatorKey: _rootNavigatorKey,
+                builder: (context, state) {
+                  final id = state.pathParameters['id']!;
+                  return MultiBlocProvider(
+                    providers: [
+                      BlocProvider(
+                        create: (_) => RolesBloc(
+                          getAll: GetRolesUseCase(
+                            RoleRepositoryImpl(KongClient()),
+                          ),
+                        )..add(LoadRolesEvent()),
+                      ),
+                      BlocProvider(
+                        create: (_) => RoleFormBloc(
+                          create: CreateRoleUseCase(
+                            RoleRepositoryImpl(KongClient()),
+                          ),
+                          update: UpdateRoleUseCase(
+                            RoleRepositoryImpl(KongClient()),
+                          ),
+                          delete: DeleteRoleUseCase(
+                            RoleRepositoryImpl(KongClient()),
+                          ),
+                        ),
+                      ),
+                    ],
+                    child: RoleFormScreen(roleId: id),
+                  );
+                },
               ),
             ],
           ),
           GoRoute(
             path: '/iam/plans',
             name: 'iam-plans',
-            pageBuilder: (context, state) => const NoTransitionPage(
-              child: PlaceholderScreen(title: 'Planes', spec: 'S007'),
+            pageBuilder: (context, state) => NoTransitionPage(
+              child: MultiBlocProvider(
+                providers: [
+                  BlocProvider(
+                    create: (_) => PlansBloc(
+                      getAll: GetPlansUseCase(
+                        PlanRepositoryImpl(KongClient()),
+                      ),
+                    )..add(LoadPlansEvent()),
+                  ),
+                  BlocProvider(
+                    create: (_) => PlanFormBloc(
+                      create: CreatePlanUseCase(
+                        PlanRepositoryImpl(KongClient()),
+                      ),
+                      update: UpdatePlanUseCase(
+                        PlanRepositoryImpl(KongClient()),
+                      ),
+                      delete: DeletePlanUseCase(
+                        PlanRepositoryImpl(KongClient()),
+                      ),
+                    ),
+                  ),
+                ],
+                child: const PlansScreen(),
+              ),
             ),
+            routes: [
+              GoRoute(
+                path: 'new',
+                name: 'iam-plan-new',
+                parentNavigatorKey: _rootNavigatorKey,
+                builder: (context, state) => MultiBlocProvider(
+                  providers: [
+                    BlocProvider(
+                      create: (_) => PlansBloc(
+                        getAll: GetPlansUseCase(
+                          PlanRepositoryImpl(KongClient()),
+                        ),
+                      ),
+                    ),
+                    BlocProvider(
+                      create: (_) => PlanFormBloc(
+                        create: CreatePlanUseCase(
+                          PlanRepositoryImpl(KongClient()),
+                        ),
+                        update: UpdatePlanUseCase(
+                          PlanRepositoryImpl(KongClient()),
+                        ),
+                        delete: DeletePlanUseCase(
+                          PlanRepositoryImpl(KongClient()),
+                        ),
+                      ),
+                    ),
+                  ],
+                  child: const PlanFormScreen(),
+                ),
+              ),
+              GoRoute(
+                path: ':id/edit',
+                name: 'iam-plan-edit',
+                parentNavigatorKey: _rootNavigatorKey,
+                builder: (context, state) {
+                  final id = state.pathParameters['id']!;
+                  return MultiBlocProvider(
+                    providers: [
+                      BlocProvider(
+                        create: (_) => PlansBloc(
+                          getAll: GetPlansUseCase(
+                            PlanRepositoryImpl(KongClient()),
+                          ),
+                        )..add(LoadPlansEvent()),
+                      ),
+                      BlocProvider(
+                        create: (_) => PlanFormBloc(
+                          create: CreatePlanUseCase(
+                            PlanRepositoryImpl(KongClient()),
+                          ),
+                          update: UpdatePlanUseCase(
+                            PlanRepositoryImpl(KongClient()),
+                          ),
+                          delete: DeletePlanUseCase(
+                            PlanRepositoryImpl(KongClient()),
+                          ),
+                        ),
+                      ),
+                    ],
+                    child: PlanFormScreen(planId: id),
+                  );
+                },
+              ),
+            ],
           ),
 
           // --- PIM: Taxonomy (S009) ---
