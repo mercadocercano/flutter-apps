@@ -17,3 +17,10 @@ export 'src/product/category.dart';
 // Sales domain
 export 'src/sale/pos_sale.dart';
 export 'src/sale/pos_sale_item.dart';
+
+// IAM domain
+export 'src/iam/paginated_result.dart';
+export 'src/iam/tenant.dart';
+export 'src/iam/role.dart';
+export 'src/iam/plan.dart';
+export 'src/iam/repositories.dart';
