@@ -11,6 +11,7 @@ import '../../features/categories/presentation/screens/category_form_screen.dart
 import '../../features/business_types/presentation/screens/business_types_list_screen.dart';
 import '../../features/global_products/presentation/screens/global_products_screen.dart';
 import '../../features/global_products/presentation/screens/global_product_detail_screen.dart';
+import '../../features/dev_metrics/presentation/screens/dev_metrics_screen.dart';
 
 final GlobalKey<NavigatorState> _rootNavigatorKey =
     GlobalKey<NavigatorState>();
@@ -134,6 +135,12 @@ class AppRouter {
                 },
               ),
             ],
+          ),
+          GoRoute(
+            path: '/dev-metrics',
+            name: 'dev-metrics',
+            pageBuilder: (context, state) =>
+                const NoTransitionPage(child: DevMetricsScreen()),
           ),
         ],
       ),

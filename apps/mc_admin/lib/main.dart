@@ -12,6 +12,8 @@ import 'features/business_types/data/business_types_repository.dart';
 import 'features/business_types/presentation/bloc/business_types_bloc.dart';
 import 'features/global_products/data/global_products_repository.dart';
 import 'features/global_products/presentation/bloc/global_products_bloc.dart';
+import 'features/dev_metrics/data/dev_metrics_repository.dart';
+import 'features/dev_metrics/presentation/bloc/dev_metrics_bloc.dart';
 
 void main() {
   runApp(const McAdminApp());
@@ -27,6 +29,7 @@ class McAdminApp extends StatelessWidget {
     final categoriesRepo = CategoriesRepository(kong);
     final businessTypesRepo = BusinessTypesRepository(kong);
     final globalProductsRepo = GlobalProductsRepository(kong);
+    final devMetricsRepo = DevMetricsRepository(kong);
 
     return MultiBlocProvider(
       providers: [
@@ -36,6 +39,7 @@ class McAdminApp extends StatelessWidget {
             value: businessTypesRepo),
         RepositoryProvider<GlobalProductsRepository>.value(
             value: globalProductsRepo),
+        RepositoryProvider<DevMetricsRepository>.value(value: devMetricsRepo),
         BlocProvider<BrandsBloc>(
           create: (_) => BrandsBloc(repository: brandsRepo),
         ),
@@ -47,6 +51,9 @@ class McAdminApp extends StatelessWidget {
         ),
         BlocProvider<GlobalProductsBloc>(
           create: (_) => GlobalProductsBloc(repository: globalProductsRepo),
+        ),
+        BlocProvider<DevMetricsBloc>(
+          create: (_) => DevMetricsBloc(repository: devMetricsRepo),
         ),
       ],
       child: MaterialApp.router(

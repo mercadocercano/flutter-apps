@@ -16,6 +16,7 @@ class AdminShell extends StatelessWidget {
     _NavItem('/global-products', 'Productos', Icons.inventory_2_outlined),
     _NavItem('/categories', 'Categorías', Icons.category_outlined),
     _NavItem('/business-types', 'Rubros', Icons.store_outlined),
+    _NavItem('/dev-metrics', 'Dev Metrics', Icons.insights_outlined),
   ];
 
   static String _titleFor(String location) {
@@ -23,6 +24,7 @@ class AdminShell extends StatelessWidget {
     if (location.startsWith('/global-products')) return 'Productos globales';
     if (location.startsWith('/categories')) return 'Categorías';
     if (location.startsWith('/business-types')) return 'Tipos de comercio';
+    if (location.startsWith('/dev-metrics')) return 'Dev Metrics';
     return 'MC Admin';
   }
 
