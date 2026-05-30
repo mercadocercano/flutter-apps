@@ -1,120 +1,96 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:mc_application/mc_application.dart';
 import 'package:mc_design_system/mc_design_system.dart';
 import '../../widgets/pos/pos_modal.dart';
 import '../auth/auth_cubit.dart';
 
-/// Pantalla de configuración — datos del comercio, cuenta, soporte.
-class SettingsScreen extends StatelessWidget {
+class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Configuración'),
-        backgroundColor: McColors.primary,
-        foregroundColor: Colors.white,
-      ),
-      body: ListView(
-        padding: const EdgeInsets.all(McSpacing.md),
-        children: [
-          // Datos del comercio
-          _SectionHeader('Mi comercio'),
-          _SettingsTile(
-            icon: Icons.store,
-            title: 'Almacén Don Pedro',
-            subtitle: 'Nombre del comercio',
-            onTap: () => _showEdit(context, 'Nombre del comercio', 'Almacén Don Pedro'),
-          ),
-          _SettingsTile(
-            icon: Icons.location_on,
-            title: 'Av. San Martín 1234, Posadas',
-            subtitle: 'Dirección',
-            onTap: () => _showEdit(context, 'Dirección', 'Av. San Martín 1234'),
-          ),
-          _SettingsTile(
-            icon: Icons.phone,
-            title: '3764-551234',
-            subtitle: 'Teléfono / WhatsApp',
-            onTap: () => _showEdit(context, 'Teléfono', '3764-551234'),
-          ),
-          const Divider(height: McSpacing.xl),
+  State<SettingsScreen> createState() => _SettingsScreenState();
+}
 
-          // Cuenta
-          _SectionHeader('Mi cuenta'),
-          _SettingsTile(
-            icon: Icons.person,
-            title: 'Pedro González',
-            subtitle: 'pedro@email.com',
-            onTap: () {},
-          ),
-          _SettingsTile(
-            icon: Icons.lock,
-            title: 'Cambiar contraseña',
-            onTap: () {},
-          ),
-          const Divider(height: McSpacing.xl),
+class _SettingsScreenState extends State<SettingsScreen> {
+  String _storeName = '';
+  String _storeAddress = '';
+  String _storePhone = '';
+  bool _isLoading = true;
+  String? _error;
 
-          // POS Config
-          _SectionHeader('Punto de venta'),
-          _SettingsSwitch(
-            icon: Icons.receipt_long,
-            title: 'Imprimir ticket automático',
-            subtitle: 'Imprime al completar venta',
-            value: false,
-            onChanged: (v) {},
-          ),
-          _SettingsSwitch(
-            icon: Icons.dark_mode,
-            title: 'Modo oscuro',
-            subtitle: 'Mejor para ambientes con poca luz',
-            value: Theme.of(context).brightness == Brightness.dark,
-            onChanged: (v) {},
-          ),
-          _SettingsSwitch(
-            icon: Icons.vibration,
-            title: 'Sonido al escanear',
-            subtitle: 'Vibración y beep al leer código',
-            value: true,
-            onChanged: (v) {},
-          ),
-          const Divider(height: McSpacing.xl),
-
-          // Info
-          _SectionHeader('Información'),
-          _SettingsTile(
-            icon: Icons.help_outline,
-            title: 'Ayuda y soporte',
-            subtitle: 'WhatsApp: 3764-000000',
-            onTap: () {},
-          ),
-          _SettingsTile(
-            icon: Icons.info_outline,
-            title: 'Versión',
-            subtitle: 'MC POS v0.1.0',
-            onTap: () {},
-          ),
-          const SizedBox(height: McSpacing.lg),
-
-          // Cerrar sesión
-          McButton(
-            label: 'Cerrar sesión',
-            icon: Icons.logout,
-            variant: McButtonVariant.outline,
-            expand: true,
-            onPressed: () {
-              context.read<AuthCubit>().logout();
-            },
-          ),
-          const SizedBox(height: McSpacing.xl),
-        ],
-      ),
-    );
+  @override
+  void initState() {
+    super.initState();
+    _loadSettings();
   }
 
-  void _showEdit(BuildContext context, String field, String current) {
-    final controller = TextEditingController(text: current);
+  Future<void> _loadSettings() async {
+    setState(() {
+      _isLoading = true;
+      _error = null;
+    });
+    try {
+      final port = context.read<TenantConfigPort>();
+      final results = await Future.wait([
+        port.getConfig('store.name'),
+        port.getConfig('store.address'),
+        port.getConfig('store.phone'),
+      ]);
+      setState(() {
+        _storeName = results[0] ?? '';
+        _storeAddress = results[1] ?? '';
+        _storePhone = results[2] ?? '';
+        _isLoading = false;
+      });
+    } catch (e) {
+      setState(() {
+        _error = 'No se pudieron cargar los datos del comercio.';
+        _isLoading = false;
+      });
+    }
+  }
+
+  Future<void> _saveConfig(String key, String value, String fieldLabel) async {
+    try {
+      await context.read<TenantConfigPort>().setConfig(key, value);
+      setState(() {
+        switch (key) {
+          case 'store.name':
+            _storeName = value;
+          case 'store.address':
+            _storeAddress = value;
+          case 'store.phone':
+            _storePhone = value;
+        }
+      });
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('$fieldLabel actualizado'),
+            backgroundColor: McColors.success,
+          ),
+        );
+      }
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('No se pudo guardar. Revisá tu conexión.'),
+            backgroundColor: McColors.error,
+          ),
+        );
+      }
+    }
+  }
+
+  void _showEdit(
+    BuildContext context,
+    String fieldLabel,
+    String currentValue,
+    String configKey,
+  ) {
+    final controller = TextEditingController(text: currentValue);
     showPosDialog<void>(
       context: context,
       child: Padding(
@@ -124,7 +100,7 @@ class SettingsScreen extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              field,
+              fieldLabel,
               style: const TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.bold,
@@ -146,17 +122,145 @@ class SettingsScreen extends StatelessWidget {
                 McButton(
                   label: 'Guardar',
                   onPressed: () {
+                    final newValue = controller.text.trim();
                     Navigator.of(context).pop();
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text('$field actualizado'),
-                        backgroundColor: McColors.success,
-                      ),
-                    );
+                    _saveConfig(configKey, newValue, fieldLabel);
                   },
                 ),
               ],
             ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Configuración'),
+        backgroundColor: McColors.primary,
+        foregroundColor: Colors.white,
+      ),
+      body: _isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : _error != null
+              ? _ErrorView(message: _error!, onRetry: _loadSettings)
+              : _buildContent(),
+    );
+  }
+
+  Widget _buildContent() {
+    return ListView(
+      padding: const EdgeInsets.all(McSpacing.md),
+      children: [
+        _SectionHeader('Mi comercio'),
+        _SettingsTile(
+          icon: Icons.store,
+          title: _storeName.isNotEmpty ? _storeName : 'Sin nombre',
+          subtitle: 'Nombre del comercio',
+          onTap: () =>
+              _showEdit(context, 'Nombre del comercio', _storeName, 'store.name'),
+        ),
+        _SettingsTile(
+          icon: Icons.location_on,
+          title: _storeAddress.isNotEmpty ? _storeAddress : 'Sin dirección',
+          subtitle: 'Dirección',
+          onTap: () => _showEdit(context, 'Dirección', _storeAddress, 'store.address'),
+        ),
+        _SettingsTile(
+          icon: Icons.phone,
+          title: _storePhone.isNotEmpty ? _storePhone : 'Sin teléfono',
+          subtitle: 'Teléfono / WhatsApp',
+          onTap: () =>
+              _showEdit(context, 'Teléfono', _storePhone, 'store.phone'),
+        ),
+        const Divider(height: McSpacing.xl),
+
+        _SectionHeader('Mi cuenta'),
+        _SettingsTile(
+          icon: Icons.person,
+          title: 'Pedro González',
+          subtitle: 'pedro@email.com',
+          onTap: () {},
+        ),
+        _SettingsTile(
+          icon: Icons.lock,
+          title: 'Cambiar contraseña',
+          onTap: () {},
+        ),
+        const Divider(height: McSpacing.xl),
+
+        _SectionHeader('Punto de venta'),
+        _SettingsSwitch(
+          icon: Icons.receipt_long,
+          title: 'Imprimir ticket automático',
+          subtitle: 'Imprime al completar venta',
+          value: false,
+          onChanged: (v) {},
+        ),
+        _SettingsSwitch(
+          icon: Icons.dark_mode,
+          title: 'Modo oscuro',
+          subtitle: 'Mejor para ambientes con poca luz',
+          value: Theme.of(context).brightness == Brightness.dark,
+          onChanged: (v) {},
+        ),
+        _SettingsSwitch(
+          icon: Icons.vibration,
+          title: 'Sonido al escanear',
+          subtitle: 'Vibración y beep al leer código',
+          value: true,
+          onChanged: (v) {},
+        ),
+        const Divider(height: McSpacing.xl),
+
+        _SectionHeader('Información'),
+        _SettingsTile(
+          icon: Icons.help_outline,
+          title: 'Ayuda y soporte',
+          subtitle: 'WhatsApp: 3764-000000',
+          onTap: () {},
+        ),
+        _SettingsTile(
+          icon: Icons.info_outline,
+          title: 'Versión',
+          subtitle: 'MC POS v0.1.0',
+          onTap: () {},
+        ),
+        const SizedBox(height: McSpacing.lg),
+
+        McButton(
+          label: 'Cerrar sesión',
+          icon: Icons.logout,
+          variant: McButtonVariant.outline,
+          expand: true,
+          onPressed: () => context.read<AuthCubit>().logout(),
+        ),
+        const SizedBox(height: McSpacing.xl),
+      ],
+    );
+  }
+}
+
+class _ErrorView extends StatelessWidget {
+  final String message;
+  final VoidCallback onRetry;
+
+  const _ErrorView({required this.message, required this.onRetry});
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(McSpacing.lg),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(message, textAlign: TextAlign.center),
+            const SizedBox(height: McSpacing.md),
+            McButton(label: 'Reintentar', onPressed: onRetry),
           ],
         ),
       ),

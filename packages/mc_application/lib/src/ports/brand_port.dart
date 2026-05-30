@@ -21,12 +21,13 @@ class BrandPage {
 abstract interface class BrandPort {
   Future<BrandPage> listBrands({int page = 1, int pageSize = 20});
   Future<Brand> getBrand(String brandId);
-  Future<Brand> createBrand({required String name, String? description});
+  Future<Brand> createBrand({required String name, String? description, String? color});
   Future<Brand> updateBrand({
     required String brandId,
     required String name,
     String? description,
     String status = 'active',
+    String? color,
   });
   Future<void> deleteBrand(String brandId);
 }

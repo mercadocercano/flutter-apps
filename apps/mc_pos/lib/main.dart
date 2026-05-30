@@ -114,6 +114,9 @@ class _McPosRootState extends State<_McPosRoot> {
             RepositoryProvider<PaymentMethodPort>(
               create: (_) => PaymentMethodHttpAdapter(httpClient),
             ),
+            RepositoryProvider<TenantConfigPort>(
+              create: (_) => TenantConfigHttpAdapter(httpClient),
+            ),
           ],
           child: BlocProvider(
             create: (_) => QuickstartCubit(catalogAdapter)..checkIfNeeded(),

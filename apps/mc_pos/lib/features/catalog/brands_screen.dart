@@ -103,43 +103,61 @@ class _BrandsScreenState extends State<BrandsScreen> {
   Future<void> _showForm({Brand? editing}) async {
     final nameCtrl = TextEditingController(text: editing?.name ?? '');
     final descCtrl = TextEditingController(text: editing?.description ?? '');
+    String? selectedColor = editing?.color;
+
     final confirmed = await showPosDialog<bool>(
       context: context,
-      child: Padding(
-        padding: const EdgeInsets.all(McSpacing.lg),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              editing == null ? 'Nueva marca' : 'Editar marca',
-              style: const TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-                color: McColors.foregroundLight,
+      child: StatefulBuilder(
+        builder: (ctx, setDialogState) => Padding(
+          padding: const EdgeInsets.all(McSpacing.lg),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                editing == null ? 'Nueva marca' : 'Editar marca',
+                style: const TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: McColors.foregroundLight,
+                ),
               ),
-            ),
-            const SizedBox(height: McSpacing.md),
-            McTextField(controller: nameCtrl, hint: 'Nombre *', autofocus: true),
-            const SizedBox(height: McSpacing.sm),
-            McTextField(controller: descCtrl, hint: 'Descripción (opcional)'),
-            const SizedBox(height: McSpacing.lg),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.end,
-              children: [
-                McButton(
-                  label: 'Cancelar',
-                  variant: McButtonVariant.ghost,
-                  onPressed: () => Navigator.of(context).pop(false),
+              const SizedBox(height: McSpacing.md),
+              McTextField(controller: nameCtrl, hint: 'Nombre *', autofocus: true),
+              const SizedBox(height: McSpacing.sm),
+              McTextField(controller: descCtrl, hint: 'Descripción (opcional)'),
+              const SizedBox(height: McSpacing.md),
+              Text(
+                'Color',
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w500,
+                  color: McColors.foregroundLight,
                 ),
-                const SizedBox(width: McSpacing.sm),
-                McButton(
-                  label: 'Guardar',
-                  onPressed: () => Navigator.of(context).pop(true),
-                ),
-              ],
-            ),
-          ],
+              ),
+              const SizedBox(height: McSpacing.sm),
+              _ColorPicker(
+                selected: selectedColor,
+                onChanged: (c) => setDialogState(() => selectedColor = c),
+              ),
+              const SizedBox(height: McSpacing.lg),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  McButton(
+                    label: 'Cancelar',
+                    variant: McButtonVariant.ghost,
+                    onPressed: () => Navigator.of(ctx).pop(false),
+                  ),
+                  const SizedBox(width: McSpacing.sm),
+                  McButton(
+                    label: 'Guardar',
+                    onPressed: () => Navigator.of(ctx).pop(true),
+                  ),
+                ],
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -154,6 +172,7 @@ class _BrandsScreenState extends State<BrandsScreen> {
         await port.createBrand(
           name: name,
           description: descCtrl.text.trim().isNotEmpty ? descCtrl.text.trim() : null,
+          color: selectedColor,
         );
       } else {
         await port.updateBrand(
@@ -161,6 +180,7 @@ class _BrandsScreenState extends State<BrandsScreen> {
           name: name,
           description: descCtrl.text.trim().isNotEmpty ? descCtrl.text.trim() : null,
           status: editing.status,
+          color: selectedColor,
         );
       }
       _refresh();
@@ -393,6 +413,55 @@ class _BrandPaginationBar extends StatelessWidget {
   }
 }
 
+// ─── Color picker de marcas ───
+
+class _ColorPicker extends StatelessWidget {
+  static const _colors = [
+    '#E53935', '#D81B60', '#8E24AA', '#3949AB',
+    '#1E88E5', '#00ACC1', '#00897B', '#43A047',
+    '#F4511E', '#FB8C00', '#FDD835', '#6D4C41',
+  ];
+
+  final String? selected;
+  final ValueChanged<String?> onChanged;
+
+  const _ColorPicker({required this.selected, required this.onChanged});
+
+  @override
+  Widget build(BuildContext context) {
+    return Wrap(
+      spacing: 8,
+      runSpacing: 8,
+      children: _colors.map((hex) {
+        final color = _hexColor(hex);
+        final isSelected = selected == hex;
+        return GestureDetector(
+          onTap: () => onChanged(isSelected ? null : hex),
+          child: Container(
+            width: 32,
+            height: 32,
+            decoration: BoxDecoration(
+              color: color,
+              shape: BoxShape.circle,
+              border: isSelected
+                  ? Border.all(color: Colors.black87, width: 3)
+                  : Border.all(color: Colors.transparent, width: 3),
+            ),
+            child: isSelected
+                ? const Icon(Icons.check, color: Colors.white, size: 18)
+                : null,
+          ),
+        );
+      }).toList(),
+    );
+  }
+
+  static Color _hexColor(String hex) {
+    final h = hex.replaceAll('#', '');
+    return Color(int.parse('FF$h', radix: 16));
+  }
+}
+
 // ─── Card de marca ───
 
 class _BrandCard extends StatelessWidget {
@@ -434,6 +503,7 @@ class _BrandCard extends StatelessWidget {
                     brandName: brand.name,
                     size: BrandBadgeSize.lg,
                     width: double.infinity,
+                    brandColor: brand.color,
                   ),
                 ),
               ),

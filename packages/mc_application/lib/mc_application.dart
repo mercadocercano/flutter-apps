@@ -12,3 +12,4 @@ export 'src/ports/stock_port.dart';
 export 'src/ports/hardware_port.dart';
 export 'src/ports/customer_port.dart';
 export 'src/ports/payment_method_port.dart';
+export 'src/ports/tenant_config_port.dart';

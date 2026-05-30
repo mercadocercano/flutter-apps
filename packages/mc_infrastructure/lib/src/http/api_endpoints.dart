@@ -41,4 +41,9 @@ abstract final class ApiEndpoints {
   // ─── Quickstart ───
   static const quickstartTemplates = '/pim/api/v1/quickstart/templates';
   static const quickstartApply = '/pim/api/v1/quickstart/apply';
+
+  // ─── Tenant Config ───
+  static String tenantConfig(String key) =>
+      '/tenant-service/api/v1/tenant/config/$key';
+  static const tenantConfigBase = '/tenant-service/api/v1/tenant/config';
 }

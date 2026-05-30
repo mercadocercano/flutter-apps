@@ -35,12 +35,13 @@ class BrandHttpAdapter implements BrandPort {
   }
 
   @override
-  Future<Brand> createBrand({required String name, String? description}) async {
+  Future<Brand> createBrand({required String name, String? description, String? color}) async {
     final response = await _client.post(
       ApiEndpoints.brands,
       data: {
         'name': name,
-        if (description != null) 'description': description,
+        'description': description,
+        'color': color,
       },
     );
     return _map(response.data as Map<String, dynamic>);
@@ -52,13 +53,15 @@ class BrandHttpAdapter implements BrandPort {
     required String name,
     String? description,
     String status = 'active',
+    String? color,
   }) async {
     final response = await _client.put(
       ApiEndpoints.brand(brandId),
       data: {
         'name': name,
-        if (description != null) 'description': description,
+        'description': description,
         'status': status,
+        'color': color,
       },
     );
     return _map(response.data as Map<String, dynamic>);
@@ -69,12 +72,16 @@ class BrandHttpAdapter implements BrandPort {
     await _client.delete(ApiEndpoints.brand(brandId));
   }
 
-  Brand _map(Map<String, dynamic> json) => Brand(
-        id: json['id']?.toString() ?? '',
-        name: json['name']?.toString() ?? '',
-        description: json['description']?.toString(),
-        status: json['status']?.toString() ?? 'active',
-        createdAt: DateTime.tryParse(json['created_at']?.toString() ?? '') ?? DateTime.now(),
-        updatedAt: DateTime.tryParse(json['updated_at']?.toString() ?? '') ?? DateTime.now(),
-      );
+  Brand _map(Map<String, dynamic> json) {
+    final colorRaw = json['color']?.toString() ?? '';
+    return Brand(
+      id: json['id']?.toString() ?? '',
+      name: json['name']?.toString() ?? '',
+      description: json['description']?.toString(),
+      status: json['status']?.toString() ?? 'active',
+      color: colorRaw.isNotEmpty ? colorRaw : null,
+      createdAt: DateTime.tryParse(json['created_at']?.toString() ?? '') ?? DateTime.now(),
+      updatedAt: DateTime.tryParse(json['updated_at']?.toString() ?? '') ?? DateTime.now(),
+    );
+  }
 }

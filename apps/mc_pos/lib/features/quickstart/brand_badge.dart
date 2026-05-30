@@ -20,6 +20,7 @@ class BrandBadge extends StatelessWidget {
   final BrandBadgeSize size;
   final double? width;
   final double? height;
+  final String? brandColor;
 
   const BrandBadge({
     super.key,
@@ -27,6 +28,7 @@ class BrandBadge extends StatelessWidget {
     this.size = BrandBadgeSize.md,
     this.width,
     this.height,
+    this.brandColor,
   });
 
   @override
@@ -35,23 +37,27 @@ class BrandBadge extends StatelessWidget {
     final h = height ?? size.height;
     final fontSize = (style.fontSize / 13) * size.baseFontSize;
 
+    final customBgColor = _parseHexColor(brandColor);
+    final effectiveBgColor = customBgColor ?? style.bgColor;
+    final effectiveTextColor = customBgColor != null ? Colors.white : style.textColor;
+
     final container = Container(
       height: h,
       constraints: width != null ? BoxConstraints(minWidth: width!) : null,
       decoration: BoxDecoration(
-        color: style.bgColor,
+        color: effectiveBgColor,
         borderRadius: BorderRadius.circular(McSpacing.radiusSm),
-        border: style.borderColor != null
+        border: customBgColor == null && style.borderColor != null
             ? Border.all(color: style.borderColor!, width: 0.5)
             : null,
-        gradient: style.gradient,
+        gradient: customBgColor == null ? style.gradient : null,
       ),
       padding: EdgeInsets.symmetric(horizontal: size.horizontalPadding),
       child: Center(
         child: Text(
           style.displayName,
           style: TextStyle(
-            color: style.textColor,
+            color: effectiveTextColor,
             fontSize: fontSize,
             fontWeight: style.fontWeight,
             fontStyle: style.isItalic ? FontStyle.italic : FontStyle.normal,
@@ -65,6 +71,14 @@ class BrandBadge extends StatelessWidget {
     );
 
     return width != null ? container : IntrinsicWidth(child: container);
+  }
+
+  static Color? _parseHexColor(String? hex) {
+    if (hex == null || hex.isEmpty) return null;
+    final h = hex.replaceAll('#', '');
+    final value = int.tryParse('FF$h', radix: 16);
+    if (value == null) return null;
+    return Color(value);
   }
 }
 
