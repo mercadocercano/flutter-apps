@@ -1,6 +1,23 @@
 /// Use cases y ports de Mercado Cercano.
 library;
 
+// IAM use cases
+export 'src/iam/tenants/get_tenants_use_case.dart';
+export 'src/iam/tenants/get_tenant_use_case.dart';
+export 'src/iam/tenants/create_tenant_use_case.dart';
+export 'src/iam/tenants/update_tenant_use_case.dart';
+export 'src/iam/tenants/delete_tenant_use_case.dart';
+export 'src/iam/roles/get_roles_use_case.dart';
+export 'src/iam/roles/get_role_use_case.dart';
+export 'src/iam/roles/create_role_use_case.dart';
+export 'src/iam/roles/update_role_use_case.dart';
+export 'src/iam/roles/delete_role_use_case.dart';
+export 'src/iam/plans/get_plans_use_case.dart';
+export 'src/iam/plans/get_plan_use_case.dart';
+export 'src/iam/plans/create_plan_use_case.dart';
+export 'src/iam/plans/update_plan_use_case.dart';
+export 'src/iam/plans/delete_plan_use_case.dart';
+
 // Ports
 export 'src/ports/auth_port.dart';
 export 'src/ports/catalog_port.dart';
