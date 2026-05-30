@@ -18,5 +18,11 @@ export 'src/http/quickstart_http_adapter.dart';
 export 'src/http/payment_method_http_adapter.dart';
 export 'src/http/tenant_config_http_adapter.dart';
 
+// IAM HTTP repositories
+export 'src/iam/iam_mappers.dart';
+export 'src/iam/tenant_repository_impl.dart';
+export 'src/iam/role_repository_impl.dart';
+export 'src/iam/plan_repository_impl.dart';
+
 // Storage
 export 'src/storage/secure_session_storage.dart';
