@@ -2,147 +2,574 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:mc_design_system/mc_design_system.dart';
 
-/// Wrapper para todas las rutas autenticadas.
-/// NO usa Scaffold propio — provee solo la top bar encima del child.
-/// Así evitamos el problema de nested Scaffolds donde el inner Scaffold
-/// cubre el AppBar del outer Scaffold.
-class AdminShell extends StatelessWidget {
+import '../api/auth_helper.dart';
+
+/// Layout principal de mc_admin: sidebar izquierdo + área de contenido.
+/// Sidebar colapsable en pantallas < 1024px (drawer).
+class AdminShell extends StatefulWidget {
   final Widget child;
 
   const AdminShell({super.key, required this.child});
 
-  static const _navItems = [
-    _NavItem('/brands', 'Marcas', Icons.branding_watermark_outlined),
-    _NavItem('/global-products', 'Productos', Icons.inventory_2_outlined),
-    _NavItem('/categories', 'Categorías', Icons.category_outlined),
-    _NavItem('/business-types', 'Rubros', Icons.store_outlined),
-    _NavItem('/dev-metrics', 'Dev Metrics', Icons.insights_outlined),
-  ];
+  @override
+  State<AdminShell> createState() => _AdminShellState();
+}
 
-  static String _titleFor(String location) {
-    if (location.startsWith('/brands')) return 'Marcas';
-    if (location.startsWith('/global-products')) return 'Productos globales';
-    if (location.startsWith('/categories')) return 'Categorías';
-    if (location.startsWith('/business-types')) return 'Tipos de comercio';
-    if (location.startsWith('/dev-metrics')) return 'Dev Metrics';
-    return 'MC Admin';
-  }
+class _AdminShellState extends State<AdminShell> {
+  bool _sidebarExpanded = true;
 
   @override
   Widget build(BuildContext context) {
+    final width = MediaQuery.of(context).size.width;
+    final isNarrow = width < 1024;
     final location = GoRouterState.of(context).matchedLocation;
-    final title = _titleFor(location);
-    final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
 
-    return Material(
-      color: colorScheme.surface,
-      child: Column(
-        children: [
-          // Top bar — fuera del Scaffold para evitar nested Scaffold issue
-          Material(
-            color: colorScheme.surface,
-            elevation: 0,
-            child: Container(
-              decoration: BoxDecoration(
-                color: colorScheme.surface,
-                border: Border(
-                  bottom: BorderSide(
-                    color: colorScheme.outlineVariant,
-                    width: 1,
-                  ),
-                ),
-              ),
-              child: SafeArea(
-                bottom: false,
-                child: SizedBox(
-                  height: kToolbarHeight,
-                  child: Row(
-                    children: [
-                      const SizedBox(width: 16),
-                      // Logo mark
-                      Container(
-                        width: 28,
-                        height: 28,
-                        decoration: BoxDecoration(
-                          color: McColors.primary,
-                          borderRadius: BorderRadius.circular(6),
-                        ),
-                        child: const Icon(
-                          Icons.storefront_outlined,
-                          color: Colors.white,
-                          size: 16,
-                        ),
-                      ),
-                      const SizedBox(width: 10),
-                      Text(
-                        title,
-                        style: theme.textTheme.titleMedium?.copyWith(
-                          color: colorScheme.onSurface,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                      const Spacer(),
-                      _NavMenu(currentLocation: location, items: _navItems),
-                      const SizedBox(width: 4),
-                    ],
-                  ),
-                ),
-              ),
+    if (isNarrow) {
+      return Scaffold(
+        appBar: AppBar(
+          title: Text(_titleFor(location)),
+          leading: Builder(
+            builder: (ctx) => IconButton(
+              icon: const Icon(Icons.menu),
+              onPressed: () => Scaffold.of(ctx).openDrawer(),
             ),
           ),
-          // Body
-          Expanded(child: child),
+        ),
+        drawer: Drawer(
+          child: _SidebarContent(currentLocation: location),
+        ),
+        body: widget.child,
+      );
+    }
+
+    return Scaffold(
+      body: Row(
+        children: [
+          AnimatedContainer(
+            duration: const Duration(milliseconds: 200),
+            width: _sidebarExpanded ? 240 : 64,
+            child: _SidebarContent(
+              currentLocation: location,
+              collapsed: !_sidebarExpanded,
+              onToggleCollapse: () =>
+                  setState(() => _sidebarExpanded = !_sidebarExpanded),
+            ),
+          ),
+          const VerticalDivider(width: 1),
+          Expanded(child: widget.child),
+        ],
+      ),
+    );
+  }
+
+  static String _titleFor(String location) {
+    if (location.startsWith('/dashboard')) return 'Dashboard';
+    if (location.startsWith('/iam/tenants')) return 'Tenants';
+    if (location.startsWith('/iam/roles')) return 'Roles';
+    if (location.startsWith('/iam/plans')) return 'Planes';
+    if (location.startsWith('/pim/taxonomy')) return 'Taxonomía';
+    if (location.startsWith('/pim/brands')) return 'Marcas';
+    if (location.startsWith('/pim/global-catalog')) return 'Catálogo Global';
+    if (location.startsWith('/pim/attributes')) return 'Atributos';
+    if (location.startsWith('/web-data/dashboard')) return 'Web Data';
+    if (location.startsWith('/web-data/sources')) return 'Fuentes';
+    if (location.startsWith('/web-data/jobs')) return 'Jobs';
+    if (location.startsWith('/web-data/products')) return 'Productos Web';
+    if (location.startsWith('/quickstart/business-types')) return 'Tipos de Negocio';
+    if (location.startsWith('/quickstart/templates')) return 'Templates';
+    return 'MC Admin';
+  }
+}
+
+// ---------------------------------------------------------------------------
+
+class _SidebarContent extends StatefulWidget {
+  final String currentLocation;
+  final bool collapsed;
+  final VoidCallback? onToggleCollapse;
+
+  const _SidebarContent({
+    required this.currentLocation,
+    this.collapsed = false,
+    this.onToggleCollapse,
+  });
+
+  @override
+  State<_SidebarContent> createState() => _SidebarContentState();
+}
+
+class _SidebarContentState extends State<_SidebarContent> {
+  // Secciones expandidas por defecto según la ruta activa
+  late final Map<String, bool> _expanded = {
+    'iam': widget.currentLocation.startsWith('/iam'),
+    'pim': widget.currentLocation.startsWith('/pim'),
+    'webdata': widget.currentLocation.startsWith('/web-data'),
+    'quickstart': widget.currentLocation.startsWith('/quickstart'),
+  };
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final c = theme.colorScheme;
+
+    return Material(
+      color: c.surfaceContainerLow,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          // Header logo
+          _SidebarHeader(
+            collapsed: widget.collapsed,
+            onToggle: widget.onToggleCollapse,
+          ),
+          const Divider(height: 1),
+          // Nav items
+          Expanded(
+            child: ListView(
+              padding: const EdgeInsets.symmetric(vertical: 8),
+              children: [
+                _NavItem(
+                  path: '/dashboard',
+                  label: 'Dashboard',
+                  icon: Icons.dashboard_outlined,
+                  currentLocation: widget.currentLocation,
+                  collapsed: widget.collapsed,
+                ),
+                const SizedBox(height: 4),
+                _NavSection(
+                  key: const ValueKey('iam'),
+                  label: 'Identity & Access',
+                  icon: Icons.shield_outlined,
+                  isExpanded: !widget.collapsed && (_expanded['iam'] ?? false),
+                  collapsed: widget.collapsed,
+                  onTap: widget.collapsed
+                      ? null
+                      : () => setState(
+                            () => _expanded['iam'] = !(_expanded['iam'] ?? false),
+                          ),
+                  children: [
+                    _NavItem(
+                      path: '/iam/tenants',
+                      label: 'Tenants',
+                      icon: Icons.corporate_fare_outlined,
+                      currentLocation: widget.currentLocation,
+                      collapsed: false,
+                      indent: true,
+                    ),
+                    _NavItem(
+                      path: '/iam/roles',
+                      label: 'Roles',
+                      icon: Icons.manage_accounts_outlined,
+                      currentLocation: widget.currentLocation,
+                      collapsed: false,
+                      indent: true,
+                    ),
+                    _NavItem(
+                      path: '/iam/plans',
+                      label: 'Planes',
+                      icon: Icons.card_membership_outlined,
+                      currentLocation: widget.currentLocation,
+                      collapsed: false,
+                      indent: true,
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 4),
+                _NavSection(
+                  key: const ValueKey('pim'),
+                  label: 'Marketplace PIM',
+                  icon: Icons.layers_outlined,
+                  isExpanded: !widget.collapsed && (_expanded['pim'] ?? false),
+                  collapsed: widget.collapsed,
+                  onTap: widget.collapsed
+                      ? null
+                      : () => setState(
+                            () => _expanded['pim'] = !(_expanded['pim'] ?? false),
+                          ),
+                  children: [
+                    _NavItem(
+                      path: '/pim/taxonomy',
+                      label: 'Taxonomía',
+                      icon: Icons.account_tree_outlined,
+                      currentLocation: widget.currentLocation,
+                      collapsed: false,
+                      indent: true,
+                    ),
+                    _NavItem(
+                      path: '/pim/brands',
+                      label: 'Marcas',
+                      icon: Icons.branding_watermark_outlined,
+                      currentLocation: widget.currentLocation,
+                      collapsed: false,
+                      indent: true,
+                    ),
+                    _NavItem(
+                      path: '/pim/global-catalog',
+                      label: 'Catálogo Global',
+                      icon: Icons.shopping_cart_outlined,
+                      currentLocation: widget.currentLocation,
+                      collapsed: false,
+                      indent: true,
+                    ),
+                    _NavItem(
+                      path: '/pim/attributes',
+                      label: 'Atributos',
+                      icon: Icons.tune_outlined,
+                      currentLocation: widget.currentLocation,
+                      collapsed: false,
+                      indent: true,
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 4),
+                _NavSection(
+                  key: const ValueKey('webdata'),
+                  label: 'Web Data',
+                  icon: Icons.sync_alt_outlined,
+                  isExpanded: !widget.collapsed && (_expanded['webdata'] ?? false),
+                  collapsed: widget.collapsed,
+                  onTap: widget.collapsed
+                      ? null
+                      : () => setState(
+                            () => _expanded['webdata'] =
+                                !(_expanded['webdata'] ?? false),
+                          ),
+                  children: [
+                    _NavItem(
+                      path: '/web-data/dashboard',
+                      label: 'Dashboard',
+                      icon: Icons.bar_chart_outlined,
+                      currentLocation: widget.currentLocation,
+                      collapsed: false,
+                      indent: true,
+                    ),
+                    _NavItem(
+                      path: '/web-data/sources',
+                      label: 'Fuentes',
+                      icon: Icons.language_outlined,
+                      currentLocation: widget.currentLocation,
+                      collapsed: false,
+                      indent: true,
+                    ),
+                    _NavItem(
+                      path: '/web-data/jobs',
+                      label: 'Jobs',
+                      icon: Icons.schedule_outlined,
+                      currentLocation: widget.currentLocation,
+                      collapsed: false,
+                      indent: true,
+                    ),
+                    _NavItem(
+                      path: '/web-data/products',
+                      label: 'Productos',
+                      icon: Icons.inventory_2_outlined,
+                      currentLocation: widget.currentLocation,
+                      collapsed: false,
+                      indent: true,
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 4),
+                _NavSection(
+                  key: const ValueKey('quickstart'),
+                  label: 'Quickstart Dinámico',
+                  icon: Icons.rocket_launch_outlined,
+                  isExpanded: !widget.collapsed && (_expanded['quickstart'] ?? false),
+                  collapsed: widget.collapsed,
+                  onTap: widget.collapsed
+                      ? null
+                      : () => setState(
+                            () => _expanded['quickstart'] =
+                                !(_expanded['quickstart'] ?? false),
+                          ),
+                  children: [
+                    _NavItem(
+                      path: '/quickstart/business-types',
+                      label: 'Tipos de Negocio',
+                      icon: Icons.store_outlined,
+                      currentLocation: widget.currentLocation,
+                      collapsed: false,
+                      indent: true,
+                    ),
+                    _NavItem(
+                      path: '/quickstart/templates',
+                      label: 'Templates',
+                      icon: Icons.description_outlined,
+                      currentLocation: widget.currentLocation,
+                      collapsed: false,
+                      indent: true,
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          const Divider(height: 1),
+          // Footer: logout
+          _LogoutTile(collapsed: widget.collapsed),
         ],
       ),
     );
   }
 }
 
-class _NavItem {
-  final String path;
-  final String label;
-  final IconData icon;
+// ---------------------------------------------------------------------------
 
-  const _NavItem(this.path, this.label, this.icon);
+class _SidebarHeader extends StatelessWidget {
+  final bool collapsed;
+  final VoidCallback? onToggle;
+
+  const _SidebarHeader({required this.collapsed, this.onToggle});
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return SizedBox(
+      height: 56,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 12),
+        child: Row(
+          children: [
+            Container(
+              width: 32,
+              height: 32,
+              decoration: BoxDecoration(
+                color: McColors.primary,
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: const Icon(Icons.storefront_outlined,
+                  color: Colors.white, size: 18),
+            ),
+            if (!collapsed) ...[
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  'MC Admin',
+                  style: theme.textTheme.titleSmall
+                      ?.copyWith(fontWeight: FontWeight.w700),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ],
+            if (onToggle != null)
+              IconButton(
+                icon: Icon(
+                  collapsed ? Icons.chevron_right : Icons.chevron_left,
+                  size: 18,
+                ),
+                onPressed: onToggle,
+                tooltip: collapsed ? 'Expandir' : 'Colapsar',
+              ),
+          ],
+        ),
+      ),
+    );
+  }
 }
 
-class _NavMenu extends StatelessWidget {
-  final String currentLocation;
-  final List<_NavItem> items;
+// ---------------------------------------------------------------------------
 
-  const _NavMenu({
-    required this.currentLocation,
-    required this.items,
+class _NavSection extends StatelessWidget {
+  final String label;
+  final IconData icon;
+  final bool isExpanded;
+  final bool collapsed;
+  final VoidCallback? onTap;
+  final List<Widget> children;
+
+  const _NavSection({
+    super.key,
+    required this.label,
+    required this.icon,
+    required this.isExpanded,
+    required this.collapsed,
+    this.onTap,
+    required this.children,
   });
 
   @override
   Widget build(BuildContext context) {
-    final primary = Theme.of(context).colorScheme.primary;
-    return PopupMenuButton<String>(
-      icon: const Icon(Icons.apps),
-      tooltip: 'Navegación',
-      onSelected: (path) => context.go(path),
-      itemBuilder: (context) => items.map((item) {
-        final isActive = currentLocation.startsWith(item.path);
-        return PopupMenuItem<String>(
-          value: item.path,
-          child: Row(
-            children: [
-              Icon(item.icon,
-                  size: 18, color: isActive ? primary : null),
-              const SizedBox(width: 12),
-              Text(
-                item.label,
-                style: TextStyle(
-                  fontWeight: isActive ? FontWeight.bold : FontWeight.normal,
-                  color: isActive ? primary : null,
-                ),
-              ),
-            ],
+    final theme = Theme.of(context);
+    final c = theme.colorScheme;
+
+    if (collapsed) {
+      return Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+        child: Tooltip(
+          message: label,
+          child: IconButton(
+            icon: Icon(icon, size: 20, color: c.onSurfaceVariant),
+            onPressed: onTap,
           ),
-        );
-      }).toList(),
+        ),
+      );
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(8),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            child: Row(
+              children: [
+                Icon(icon, size: 16, color: c.onSurfaceVariant),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    label,
+                    style: theme.textTheme.labelMedium?.copyWith(
+                      color: c.onSurfaceVariant,
+                      fontWeight: FontWeight.w600,
+                      letterSpacing: 0.5,
+                    ),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+                Icon(
+                  isExpanded ? Icons.expand_less : Icons.expand_more,
+                  size: 16,
+                  color: c.onSurfaceVariant,
+                ),
+              ],
+            ),
+          ),
+        ),
+        AnimatedSize(
+          duration: const Duration(milliseconds: 150),
+          child: isExpanded
+              ? Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: children)
+              : const SizedBox.shrink(),
+        ),
+      ],
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+
+class _NavItem extends StatelessWidget {
+  final String path;
+  final String label;
+  final IconData icon;
+  final String currentLocation;
+  final bool collapsed;
+  final bool indent;
+
+  const _NavItem({
+    required this.path,
+    required this.label,
+    required this.icon,
+    required this.currentLocation,
+    required this.collapsed,
+    this.indent = false,
+  });
+
+  bool get _isActive => currentLocation.startsWith(path);
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final c = theme.colorScheme;
+    final active = _isActive;
+
+    if (collapsed) {
+      return Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+        child: Tooltip(
+          message: label,
+          child: Container(
+            decoration: BoxDecoration(
+              color: active ? c.primaryContainer : null,
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: IconButton(
+              icon: Icon(
+                icon,
+                size: 20,
+                color: active ? c.primary : c.onSurfaceVariant,
+              ),
+              onPressed: () => context.go(path),
+            ),
+          ),
+        ),
+      );
+    }
+
+    return Padding(
+      padding: EdgeInsets.fromLTRB(indent ? 28 : 8, 1, 8, 1),
+      child: Material(
+        color: active ? c.primaryContainer : Colors.transparent,
+        borderRadius: BorderRadius.circular(8),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(8),
+          onTap: () => context.go(path),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            child: Row(
+              children: [
+                Icon(
+                  icon,
+                  size: 18,
+                  color: active ? c.primary : c.onSurfaceVariant,
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    label,
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      color: active ? c.primary : c.onSurface,
+                      fontWeight: active ? FontWeight.w600 : FontWeight.normal,
+                    ),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+
+class _LogoutTile extends StatelessWidget {
+  final bool collapsed;
+
+  const _LogoutTile({required this.collapsed});
+
+  Future<void> _logout(BuildContext context) async {
+    await AuthHelper.clearTokens();
+    if (context.mounted) context.go('/login');
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final c = Theme.of(context).colorScheme;
+    if (collapsed) {
+      return Padding(
+        padding: const EdgeInsets.all(8),
+        child: Tooltip(
+          message: 'Cerrar Sesión',
+          child: IconButton(
+            icon: Icon(Icons.logout, size: 20, color: c.error),
+            onPressed: () => _logout(context),
+          ),
+        ),
+      );
+    }
+    return ListTile(
+      leading: Icon(Icons.logout, color: c.error, size: 18),
+      title: Text(
+        'Cerrar Sesión',
+        style: TextStyle(color: c.error, fontSize: 14),
+      ),
+      onTap: () => _logout(context),
+      dense: true,
     );
   }
 }

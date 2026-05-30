@@ -18,6 +18,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
   bool _loading = false;
   bool _obscurePassword = true;
+  String? _errorMessage;
 
   @override
   void dispose() {
@@ -28,8 +29,10 @@ class _LoginScreenState extends State<LoginScreen> {
 
   Future<void> _login() async {
     if (!_formKey.currentState!.validate()) return;
-
-    setState(() => _loading = true);
+    setState(() {
+      _loading = true;
+      _errorMessage = null;
+    });
     try {
       final response = await KongClient().post<Map<String, dynamic>>(
         '/iam/api/v1/auth/login',
@@ -39,28 +42,37 @@ class _LoginScreenState extends State<LoginScreen> {
           'provider': 'LOCAL',
         },
       );
-      final token = response.data?['access_token'] as String?;
-      if (token == null || token.isEmpty) {
-        throw Exception('Respuesta invalida del servidor');
+      final data = response.data;
+      final accessToken = data?['access_token'] as String?;
+      if (accessToken == null || accessToken.isEmpty) {
+        throw Exception('Respuesta inválida del servidor');
       }
-      AuthHelper.setJwt(token);
-      if (mounted) context.go('/brands');
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error al ingresar: $e'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
+      await AuthHelper.setTokens(
+        accessToken: accessToken,
+        refreshToken: data?['refresh_token'] as String?,
+      );
+      if (mounted) context.go('/dashboard');
+    } on Exception catch (e) {
+      setState(() => _errorMessage = _friendlyError(e));
     } finally {
       if (mounted) setState(() => _loading = false);
     }
   }
 
+  String _friendlyError(Exception e) {
+    final msg = e.toString();
+    if (msg.contains('401') || msg.contains('credentials')) {
+      return 'Email o contraseña incorrectos';
+    }
+    if (msg.contains('SocketException') || msg.contains('connection')) {
+      return 'Sin conexión. Verificar red.';
+    }
+    return 'Error al ingresar. Intentá de nuevo.';
+  }
+
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     return Scaffold(
       body: Center(
         child: SingleChildScrollView(
@@ -72,35 +84,66 @@ class _LoginScreenState extends State<LoginScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
+                  // Logo
+                  Center(
+                    child: Container(
+                      width: 48,
+                      height: 48,
+                      decoration: BoxDecoration(
+                        color: theme.colorScheme.primary,
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: const Icon(
+                        Icons.storefront_outlined,
+                        color: Colors.white,
+                        size: 28,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
                   Text(
                     'MC Admin',
-                    style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                          fontWeight: FontWeight.bold,
-                        ),
+                    style: theme.textTheme.headlineSmall?.copyWith(
+                      fontWeight: FontWeight.bold,
+                    ),
                     textAlign: TextAlign.center,
                   ),
-                  const SizedBox(height: 8),
+                  const SizedBox(height: 4),
                   Text(
-                    'Ingresa con tu cuenta',
-                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          color: Colors.grey,
-                        ),
+                    'Panel de administración',
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      color: theme.colorScheme.onSurfaceVariant,
+                    ),
                     textAlign: TextAlign.center,
                   ),
                   const SizedBox(height: 32),
+                  if (_errorMessage != null) ...[
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: theme.colorScheme.errorContainer,
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Text(
+                        _errorMessage!,
+                        style: TextStyle(color: theme.colorScheme.onErrorContainer),
+                        textAlign: TextAlign.center,
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                  ],
                   TextFormField(
                     controller: _emailController,
                     enabled: !_loading,
                     keyboardType: TextInputType.emailAddress,
+                    textInputAction: TextInputAction.next,
                     decoration: const InputDecoration(
                       labelText: 'Email',
                       prefixIcon: Icon(Icons.email_outlined),
                       border: OutlineInputBorder(),
                     ),
                     validator: (v) {
-                      if (v == null || v.trim().isEmpty) {
-                        return 'El email es obligatorio';
-                      }
+                      if (v == null || v.trim().isEmpty) return 'El email es obligatorio';
                       return null;
                     },
                   ),
@@ -109,8 +152,10 @@ class _LoginScreenState extends State<LoginScreen> {
                     controller: _passwordController,
                     enabled: !_loading,
                     obscureText: _obscurePassword,
+                    textInputAction: TextInputAction.done,
+                    onFieldSubmitted: (_) => _login(),
                     decoration: InputDecoration(
-                      labelText: 'Contrasena',
+                      labelText: 'Contraseña',
                       prefixIcon: const Icon(Icons.lock_outline),
                       border: const OutlineInputBorder(),
                       suffixIcon: IconButton(
@@ -119,22 +164,19 @@ class _LoginScreenState extends State<LoginScreen> {
                               ? Icons.visibility_outlined
                               : Icons.visibility_off_outlined,
                         ),
-                        onPressed: () => setState(
-                          () => _obscurePassword = !_obscurePassword,
-                        ),
+                        onPressed: () =>
+                            setState(() => _obscurePassword = !_obscurePassword),
                       ),
                     ),
                     validator: (v) {
-                      if (v == null || v.isEmpty) {
-                        return 'La contrasena es obligatoria';
-                      }
+                      if (v == null || v.isEmpty) return 'La contraseña es obligatoria';
                       return null;
                     },
                   ),
                   const SizedBox(height: 24),
-                  ElevatedButton(
+                  FilledButton(
                     onPressed: _loading ? null : _login,
-                    style: ElevatedButton.styleFrom(
+                    style: FilledButton.styleFrom(
                       padding: const EdgeInsets.symmetric(vertical: 16),
                     ),
                     child: _loading

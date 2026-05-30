@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import 'core/api/auth_helper.dart';
 import 'core/api/kong_client.dart';
 import 'core/navigation/app_router.dart';
 import 'core/themes/app_theme.dart';
@@ -15,7 +16,10 @@ import 'features/global_products/presentation/bloc/global_products_bloc.dart';
 import 'features/dev_metrics/data/dev_metrics_repository.dart';
 import 'features/dev_metrics/presentation/bloc/dev_metrics_bloc.dart';
 
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  // Restaura sesión persistida antes de renderizar la UI
+  await AuthHelper.init();
   runApp(const McAdminApp());
 }
 

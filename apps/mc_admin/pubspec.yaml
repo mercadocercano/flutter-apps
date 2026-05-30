@@ -24,6 +24,8 @@ dependencies:
   go_router: ^13.0.0
   google_fonts: ^6.2.1
   cupertino_icons: ^1.0.8
+  flutter_secure_storage: ^9.2.2
+  shared_preferences: ^2.3.3
 
 dev_dependencies:
   flutter_test:
@@ -31,6 +33,7 @@ dev_dependencies:
   integration_test:
     sdk: flutter
   bloc_test: ^10.0.0
+  mocktail: ^1.0.4
   flutter_lints: ^6.0.0
 
 flutter:
