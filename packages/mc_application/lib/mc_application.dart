@@ -7,6 +7,7 @@ export 'src/iam/tenants/get_tenant_use_case.dart';
 export 'src/iam/tenants/create_tenant_use_case.dart';
 export 'src/iam/tenants/update_tenant_use_case.dart';
 export 'src/iam/tenants/delete_tenant_use_case.dart';
+export 'src/iam/tenants/toggle_tenant_status_use_case.dart';
 export 'src/iam/roles/get_roles_use_case.dart';
 export 'src/iam/roles/get_role_use_case.dart';
 export 'src/iam/roles/create_role_use_case.dart';

@@ -8,6 +8,7 @@ abstract interface class TenantRepository {
   Future<PaginatedResult<Tenant>> getAll(
     int page,
     int pageSize, {
+    String? name,
     TenantStatus? status,
     TenantType? type,
   });
@@ -17,6 +18,8 @@ abstract interface class TenantRepository {
   Future<Tenant> create(CreateTenantParams params);
 
   Future<Tenant> update(String id, UpdateTenantParams params);
+
+  Future<Tenant> toggleStatus(String id, TenantStatus newStatus);
 
   Future<void> delete(String id);
 }

@@ -36,6 +36,8 @@ void main() {
 
   setUp(() {
     repository = MockTenantRepository();
+    registerFallbackValue(TenantStatus.active);
+    registerFallbackValue(TenantType.personal);
     registerFallbackValue(
       const CreateTenantParams(
         name: 'x',
@@ -158,6 +160,50 @@ void main() {
       final useCase = DeleteTenantUseCase(repository);
 
       expect(() => useCase.execute('tid-x'), throwsException);
+    });
+  });
+
+  group('ToggleTenantStatusUseCase', () {
+    test('llama toggleStatus con id y newStatus', () async {
+      final updated = _buildTenant(id: 'tid-1');
+      when(() => repository.toggleStatus('tid-1', TenantStatus.inactive))
+          .thenAnswer((_) async => updated);
+      final useCase = ToggleTenantStatusUseCase(repository);
+
+      final result = await useCase.execute('tid-1', TenantStatus.inactive);
+
+      expect(result.id, 'tid-1');
+      verify(() => repository.toggleStatus('tid-1', TenantStatus.inactive)).called(1);
+    });
+
+    test('propaga excepcion del repositorio', () async {
+      when(() => repository.toggleStatus(any(), any(that: isA<TenantStatus>())))
+          .thenThrow(Exception('Not found'));
+      final useCase = ToggleTenantStatusUseCase(repository);
+
+      expect(
+        () => useCase.execute('missing', TenantStatus.active),
+        throwsException,
+      );
+    });
+  });
+
+  group('GetTenantsUseCase — búsqueda por name', () {
+    test('pasa name al repositorio', () async {
+      when(() => repository.getAll(
+            1,
+            20,
+            name: any(named: 'name'),
+          )).thenAnswer((_) async => _buildPage());
+      final useCase = GetTenantsUseCase(repository);
+
+      await useCase.execute(1, 20, name: 'ferret');
+
+      verify(() => repository.getAll(
+            1,
+            20,
+            name: any(named: 'name'),
+          )).called(1);
     });
   });
 }

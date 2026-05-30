@@ -17,12 +17,14 @@ class TenantRepositoryImpl implements TenantRepository {
   Future<PaginatedResult<Tenant>> getAll(
     int page,
     int pageSize, {
+    String? name,
     TenantStatus? status,
     TenantType? type,
   }) async {
     final params = <String, dynamic>{
       'page': page,
       'page_size': pageSize,
+      if (name != null && name.isNotEmpty) 'name': name,
       if (status != null) 'status': tenantStatusToString(status),
       if (type != null) 'type': tenantTypeToString(type),
     };
@@ -33,7 +35,19 @@ class TenantRepositoryImpl implements TenantRepository {
     );
 
     final data = _requireData(response);
-    return paginatedFromJson<Tenant>(data, tenantFromJson);
+    // IAM service returns "tenants" key (not "items") for tenant lists
+    return _paginatedTenantsFromJson(data);
+  }
+
+  PaginatedResult<Tenant> _paginatedTenantsFromJson(Map<String, dynamic> json) {
+    final rawItems = (json['tenants'] ?? json['items']) as List? ?? [];
+    return PaginatedResult<Tenant>(
+      items: rawItems.cast<Map<String, dynamic>>().map(tenantFromJson).toList(),
+      totalCount: (json['total_count'] as num?)?.toInt() ?? 0,
+      page: (json['page'] as num?)?.toInt() ?? 1,
+      pageSize: (json['page_size'] as num?)?.toInt() ?? 10,
+      totalPages: (json['total_pages'] as num?)?.toInt() ?? 1,
+    );
   }
 
   @override
@@ -73,6 +87,16 @@ class TenantRepositoryImpl implements TenantRepository {
       if (params.settings != null) 'settings': params.settings,
     };
 
+    final response = await _client.put<Map<String, dynamic>>(
+      '$_base/$id',
+      data: body,
+    );
+    return tenantFromJson(_requireData(response));
+  }
+
+  @override
+  Future<Tenant> toggleStatus(String id, TenantStatus newStatus) async {
+    final body = {'status': tenantStatusToString(newStatus)};
     final response = await _client.put<Map<String, dynamic>>(
       '$_base/$id',
       data: body,

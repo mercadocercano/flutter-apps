@@ -69,6 +69,7 @@ class TenantsBloc extends Bloc<TenantsEvent, TenantsState> {
 
   int _currentPage = 1;
   int _pageSize = 20;
+  String? _searchQuery;
   TenantStatus? _filterStatus;
   TenantType? _filterType;
 
@@ -86,6 +87,7 @@ class TenantsBloc extends Bloc<TenantsEvent, TenantsState> {
     emit(TenantsLoading());
     _currentPage = event.page;
     _pageSize = event.pageSize;
+    _searchQuery = event.searchQuery;
     _filterStatus = event.status;
     _filterType = event.type;
 
@@ -93,6 +95,7 @@ class TenantsBloc extends Bloc<TenantsEvent, TenantsState> {
       final result = await _getAll.execute(
         _currentPage,
         _pageSize,
+        name: _searchQuery,
         status: _filterStatus,
         type: _filterType,
       );
@@ -117,6 +120,7 @@ class TenantsBloc extends Bloc<TenantsEvent, TenantsState> {
     add(LoadTenantsEvent(
       page: event.page,
       pageSize: _pageSize,
+      searchQuery: _searchQuery,
       status: _filterStatus,
       type: _filterType,
     ));

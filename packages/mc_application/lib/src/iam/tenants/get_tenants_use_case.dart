@@ -8,9 +8,10 @@ class GetTenantsUseCase {
   Future<PaginatedResult<Tenant>> execute(
     int page,
     int pageSize, {
+    String? name,
     TenantStatus? status,
     TenantType? type,
   }) {
-    return _repository.getAll(page, pageSize, status: status, type: type);
+    return _repository.getAll(page, pageSize, name: name, status: status, type: type);
   }
 }
