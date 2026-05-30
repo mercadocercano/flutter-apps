@@ -18,6 +18,10 @@ export 'src/http/quickstart_http_adapter.dart';
 export 'src/http/payment_method_http_adapter.dart';
 export 'src/http/tenant_config_http_adapter.dart';
 
+// PIM HTTP repositories (S008)
+export 'src/pim/brands/brand_mappers.dart';
+export 'src/pim/brands/marketplace_brand_repository_impl.dart';
+
 // IAM HTTP repositories
 export 'src/iam/iam_mappers.dart';
 export 'src/iam/tenant_repository_impl.dart';
