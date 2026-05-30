@@ -46,6 +46,11 @@ class AdminDataTable<T> extends StatelessWidget {
   final void Function(T item, bool selected)? onItemSelected;
   final void Function(bool? selectAll)? onSelectAll;
 
+  // Sort
+  final void Function(int columnIndex, bool ascending)? onSort;
+  final int? sortColumnIndex;
+  final bool sortAscending;
+
   // Slot para acciones bulk (aparece cuando hay selección)
   final Widget? bulkActions;
 
@@ -74,6 +79,9 @@ class AdminDataTable<T> extends StatelessWidget {
     this.selectedItems,
     this.onItemSelected,
     this.onSelectAll,
+    this.onSort,
+    this.sortColumnIndex,
+    this.sortAscending = true,
     this.bulkActions,
     this.createLabel,
     this.onCreateTap,
@@ -165,14 +173,21 @@ class AdminDataTable<T> extends StatelessWidget {
         child: DataTable(
           showCheckboxColumn: _multiSelect,
           onSelectAll: _multiSelect ? onSelectAll : null,
+          sortColumnIndex: sortColumnIndex,
+          sortAscending: sortAscending,
           columns: columns
+              .asMap()
+              .entries
               .map(
-                (col) => DataColumn(
+                (entry) => DataColumn(
                   label: Text(
-                    col.label,
+                    entry.value.label,
                     style: const TextStyle(fontWeight: FontWeight.w600),
                   ),
                   numeric: false,
+                  onSort: entry.value.sortable && onSort != null
+                      ? (_, ascending) => onSort!(entry.key, ascending)
+                      : null,
                 ),
               )
               .toList(),

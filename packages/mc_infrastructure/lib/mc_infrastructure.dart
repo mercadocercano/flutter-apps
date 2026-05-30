@@ -1,6 +1,10 @@
 /// Adaptadores de infraestructura de Mercado Cercano.
 library;
 
+// Admin HTTP + Auth
+export 'src/auth/admin_auth_helper.dart';
+export 'src/http/admin_http_client.dart';
+
 // HTTP
 export 'src/http/mc_http_client.dart';
 export 'src/http/api_endpoints.dart';

@@ -105,5 +105,41 @@ void main() {
       ));
       expect(find.text('Nueva Marca'), findsOneWidget);
     });
+
+    testWidgets('llama onSort al hacer tap en columna sortable', (tester) async {
+      int? sortedIndex;
+      bool? sortedAscending;
+
+      final sortableColumns = [
+        AdminColumn<Map<String, String>>(
+          label: 'Nombre',
+          sortable: true,
+          builder: (item) => Text(item['name'] ?? ''),
+        ),
+      ];
+
+      await tester.pumpWidget(MaterialApp(
+        home: Scaffold(
+          body: AdminDataTable<Map<String, String>>(
+            items: [{'name': 'Test'}],
+            columns: sortableColumns,
+            currentPage: 1,
+            pageSize: 20,
+            totalItems: 1,
+            onPageChanged: (_) {},
+            onSort: (index, ascending) {
+              sortedIndex = index;
+              sortedAscending = ascending;
+            },
+          ),
+        ),
+      ));
+
+      await tester.tap(find.text('Nombre'));
+      await tester.pump();
+
+      expect(sortedIndex, equals(0));
+      expect(sortedAscending, isNotNull);
+    });
   });
 }
