@@ -22,6 +22,10 @@ export 'src/http/tenant_config_http_adapter.dart';
 export 'src/pim/brands/brand_mappers.dart';
 export 'src/pim/brands/marketplace_brand_repository_impl.dart';
 
+// PIM Taxonomy HTTP repositories (S009)
+export 'src/pim/taxonomy/category_mappers.dart';
+export 'src/pim/taxonomy/marketplace_category_repository_impl.dart';
+
 // IAM HTTP repositories
 export 'src/iam/iam_mappers.dart';
 export 'src/iam/tenant_repository_impl.dart';
