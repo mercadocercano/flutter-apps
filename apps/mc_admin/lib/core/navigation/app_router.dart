@@ -6,12 +6,16 @@ import 'admin_shell.dart';
 
 // Screens existentes
 import '../../features/auth/presentation/screens/login_screen.dart';
-import '../../features/categories/presentation/screens/categories_tree_screen.dart';
-import '../../features/categories/presentation/screens/category_form_screen.dart';
 import '../../features/business_types/presentation/screens/business_types_list_screen.dart';
 import '../../features/global_products/presentation/screens/global_products_screen.dart';
 import '../../features/global_products/presentation/screens/global_product_detail_screen.dart';
 import '../../features/dev_metrics/presentation/screens/dev_metrics_screen.dart';
+
+// PIM Taxonomy screens (S009)
+import '../../features/pim/taxonomy/taxonomy_screen.dart';
+import '../../features/pim/taxonomy/category_form_screen.dart';
+import '../../features/pim/taxonomy/blocs/taxonomy_bloc.dart';
+import '../../features/pim/taxonomy/blocs/category_form_bloc.dart';
 
 // PIM Brands screens (S008)
 import '../../features/pim/brands/brands_screen.dart';
@@ -402,8 +406,33 @@ class AppRouter {
           GoRoute(
             path: '/pim/taxonomy',
             name: 'pim-taxonomy',
-            pageBuilder: (context, state) =>
-                const NoTransitionPage(child: CategoriesTreeScreen()),
+            pageBuilder: (context, state) => NoTransitionPage(
+              child: MultiBlocProvider(
+                providers: [
+                  BlocProvider(
+                    create: (_) => TaxonomyBloc(
+                      getTree: GetCategoryTreeUseCase(
+                        MarketplaceCategoryRepositoryImpl(KongClient()),
+                      ),
+                    )..add(LoadTaxonomyEvent()),
+                  ),
+                  BlocProvider(
+                    create: (_) => CategoryFormBloc(
+                      create: CreateCategoryUseCase(
+                        MarketplaceCategoryRepositoryImpl(KongClient()),
+                      ),
+                      update: UpdateCategoryUseCase(
+                        MarketplaceCategoryRepositoryImpl(KongClient()),
+                      ),
+                      delete: DeleteCategoryUseCase(
+                        MarketplaceCategoryRepositoryImpl(KongClient()),
+                      ),
+                    ),
+                  ),
+                ],
+                child: const TaxonomyScreen(),
+              ),
+            ),
             routes: [
               GoRoute(
                 path: 'new',
@@ -411,16 +440,65 @@ class AppRouter {
                 parentNavigatorKey: _rootNavigatorKey,
                 builder: (context, state) {
                   final parentId = state.uri.queryParameters['parentId'];
-                  return CategoryFormScreen(initialParentId: parentId);
+                  return MultiBlocProvider(
+                    providers: [
+                      BlocProvider(
+                        create: (_) => TaxonomyBloc(
+                          getTree: GetCategoryTreeUseCase(
+                            MarketplaceCategoryRepositoryImpl(KongClient()),
+                          ),
+                        )..add(LoadTaxonomyEvent()),
+                      ),
+                      BlocProvider(
+                        create: (_) => CategoryFormBloc(
+                          create: CreateCategoryUseCase(
+                            MarketplaceCategoryRepositoryImpl(KongClient()),
+                          ),
+                          update: UpdateCategoryUseCase(
+                            MarketplaceCategoryRepositoryImpl(KongClient()),
+                          ),
+                          delete: DeleteCategoryUseCase(
+                            MarketplaceCategoryRepositoryImpl(KongClient()),
+                          ),
+                        ),
+                      ),
+                    ],
+                    child: CategoryFormScreen(initialParentId: parentId),
+                  );
                 },
               ),
               GoRoute(
                 path: ':id/edit',
                 name: 'pim-taxonomy-edit',
                 parentNavigatorKey: _rootNavigatorKey,
-                builder: (context, state) => CategoryFormScreen(
-                  categoryId: state.pathParameters['id'],
-                ),
+                builder: (context, state) {
+                  final id = state.pathParameters['id']!;
+                  return MultiBlocProvider(
+                    providers: [
+                      BlocProvider(
+                        create: (_) => TaxonomyBloc(
+                          getTree: GetCategoryTreeUseCase(
+                            MarketplaceCategoryRepositoryImpl(KongClient()),
+                          ),
+                        )..add(LoadTaxonomyEvent()),
+                      ),
+                      BlocProvider(
+                        create: (_) => CategoryFormBloc(
+                          create: CreateCategoryUseCase(
+                            MarketplaceCategoryRepositoryImpl(KongClient()),
+                          ),
+                          update: UpdateCategoryUseCase(
+                            MarketplaceCategoryRepositoryImpl(KongClient()),
+                          ),
+                          delete: DeleteCategoryUseCase(
+                            MarketplaceCategoryRepositoryImpl(KongClient()),
+                          ),
+                        ),
+                      ),
+                    ],
+                    child: CategoryFormScreen(categoryId: id),
+                  );
+                },
               ),
             ],
           ),
