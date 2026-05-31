@@ -2,48 +2,53 @@ import 'package:mc_infrastructure/mc_infrastructure.dart';
 import 'package:test/test.dart';
 
 void main() {
-  group('paginatedCategoriesFromJson', () {
-    test('parsea lista paginada correctamente', () {
+  group('paginatedCategoriesFromJson — formato real pim-service', () {
+    test('parsea pagination object correctamente', () {
       final json = {
         'categories': [
           _catJson('c1', 'Electrónica'),
           _catJson('c2', 'Hogar'),
         ],
-        'total': 10,
-        'page': 2,
-        'page_size': 5,
-        'total_pages': 2,
+        'pagination': {
+          'offset': 5,
+          'limit': 5,
+          'total': 10,
+          'has_next': false,
+          'has_prev': true,
+          'total_pages': 2,
+        },
       };
 
       final result = paginatedCategoriesFromJson(json);
 
       expect(result.items.length, 2);
       expect(result.totalCount, 10);
-      expect(result.page, 2);
+      expect(result.page, 2); // offset=5, limit=5 → page 2
       expect(result.pageSize, 5);
       expect(result.totalPages, 2);
       expect(result.items.first.id, 'c1');
     });
 
-    test('maneja lista vacía', () {
+    test('página 1 cuando offset=0', () {
       final json = {
         'categories': <dynamic>[],
-        'total': 0,
-        'page': 1,
-        'page_size': 20,
-        'total_pages': 0,
+        'pagination': {
+          'offset': 0,
+          'limit': 20,
+          'total': 0,
+          'total_pages': 0,
+        },
       };
 
       final result = paginatedCategoriesFromJson(json);
 
       expect(result.items, isEmpty);
       expect(result.totalCount, 0);
+      expect(result.page, 1);
     });
 
-    test('usa valores por defecto si faltan campos de paginación', () {
-      final json = {
-        'categories': <dynamic>[],
-      };
+    test('usa valores por defecto si pagination ausente', () {
+      final json = {'categories': <dynamic>[]};
 
       final result = paginatedCategoriesFromJson(json);
 

@@ -21,12 +21,13 @@ class MarketplaceCategoryRepositoryImpl
     String? name,
     String? parentId,
   }) async {
+    final offset = (page - 1) * pageSize;
     final params = <String, dynamic>{
-      'page': page,
-      'page_size': pageSize,
-      if (name != null && name.isNotEmpty) 'name': name,
-      'parent_id': parentId,
-    }..removeWhere((k, v) => v == null);
+      'offset': offset,
+      'limit': pageSize,
+      if (name != null && name.isNotEmpty) 'search': name,
+      if (parentId != null) 'parent_id': parentId,
+    };
 
     final response = await _client.get<Map<String, dynamic>>(
       _base,

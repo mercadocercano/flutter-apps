@@ -3,21 +3,24 @@ import 'package:mc_domain/mc_domain.dart';
 /// Mappers: JSON del pim-service → entidades de dominio MarketplaceCategory.
 
 /// Parsea lista paginada de categorías.
-/// Formato: {"categories":[...],"total":N,"page":N,"page_size":N,"total_pages":N}
+/// Formato real pim-service:
+/// {"categories":[...],"pagination":{"offset":N,"limit":N,"total":N,"total_pages":N,...}}
 PaginatedResult<MarketplaceCategory> paginatedCategoriesFromJson(
   Map<String, dynamic> json,
 ) {
   final rawItems = (json['categories'] as List?) ?? [];
-  final total = (json['total'] as num?)?.toInt() ?? 0;
-  final page = (json['page'] as num?)?.toInt() ?? 1;
-  final pageSize = (json['page_size'] as num?)?.toInt() ?? 20;
-  final totalPages = (json['total_pages'] as num?)?.toInt() ?? 1;
+  final pagination = json['pagination'] as Map<String, dynamic>? ?? {};
+  final total = (pagination['total'] as num?)?.toInt() ?? 0;
+  final limit = (pagination['limit'] as num?)?.toInt() ?? 20;
+  final offset = (pagination['offset'] as num?)?.toInt() ?? 0;
+  final totalPages = (pagination['total_pages'] as num?)?.toInt() ?? 1;
+  final page = limit > 0 ? (offset ~/ limit) + 1 : 1;
 
   return PaginatedResult<MarketplaceCategory>(
     items: rawItems.cast<Map<String, dynamic>>().map(categoryFromJson).toList(),
     totalCount: total,
     page: page,
-    pageSize: pageSize,
+    pageSize: limit,
     totalPages: totalPages,
   );
 }
