@@ -19,3 +19,6 @@ export 'src/widgets/product_image_widget.dart';
 // Brand
 export 'src/brand/mc_brand_palette.dart';
 export 'src/brand/mc_brand_chip.dart';
+
+// Components (S009+)
+export 'src/components/category_tree_view.dart';
