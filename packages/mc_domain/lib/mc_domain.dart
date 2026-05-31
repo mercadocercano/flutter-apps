@@ -23,6 +23,12 @@ export 'src/pim/brand/marketplace_brand.dart';
 export 'src/pim/brand/brand_repository.dart';
 export 'src/pim/brand/brand_params.dart';
 
+// PIM — Taxonomy (admin marketplace, S009)
+export 'src/pim/taxonomy/marketplace_category.dart';
+export 'src/pim/taxonomy/category_tree.dart';
+export 'src/pim/taxonomy/taxonomy_repository.dart';
+export 'src/pim/taxonomy/category_params.dart';
+
 // IAM domain
 export 'src/iam/paginated_result.dart';
 export 'src/iam/tenant.dart';
