@@ -19,6 +19,14 @@ export 'src/iam/plans/create_plan_use_case.dart';
 export 'src/iam/plans/update_plan_use_case.dart';
 export 'src/iam/plans/delete_plan_use_case.dart';
 
+// PIM — Taxonomy use cases (S009)
+export 'src/pim/taxonomy/get_category_tree_use_case.dart';
+export 'src/pim/taxonomy/get_categories_use_case.dart';
+export 'src/pim/taxonomy/get_category_use_case.dart';
+export 'src/pim/taxonomy/create_category_use_case.dart';
+export 'src/pim/taxonomy/update_category_use_case.dart';
+export 'src/pim/taxonomy/delete_category_use_case.dart';
+
 // PIM — Brands use cases (S008)
 export 'src/pim/brands/get_brands_use_case.dart';
 export 'src/pim/brands/get_brand_use_case.dart';
