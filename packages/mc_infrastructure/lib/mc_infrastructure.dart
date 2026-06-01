@@ -26,6 +26,10 @@ export 'src/pim/brands/marketplace_brand_repository_impl.dart';
 export 'src/pim/taxonomy/category_mappers.dart';
 export 'src/pim/taxonomy/marketplace_category_repository_impl.dart';
 
+// PIM Global Catalog HTTP repositories (S010)
+export 'src/pim/global_catalog/global_product_mappers.dart';
+export 'src/pim/global_catalog/global_product_repository_impl.dart';
+
 // IAM HTTP repositories
 export 'src/iam/iam_mappers.dart';
 export 'src/iam/tenant_repository_impl.dart';
