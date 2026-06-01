@@ -32,6 +32,14 @@ import '../../features/pim/global_catalog/product_form_screen.dart';
 import '../../features/pim/global_catalog/product_detail_screen.dart';
 import '../../features/pim/global_catalog/bulk_import_screen.dart';
 
+// PIM Attributes BLoCs + Screens (S011)
+import '../../features/pim/attributes/blocs/attribute_list_bloc.dart';
+import '../../features/pim/attributes/blocs/attribute_form_bloc.dart';
+import '../../features/pim/attributes/blocs/attribute_values_bloc.dart';
+import '../../features/pim/attributes/attribute_list_screen.dart';
+import '../../features/pim/attributes/attribute_form_screen.dart';
+import '../../features/pim/attributes/attribute_detail_screen.dart';
+
 // IAM screens (S007)
 import '../../features/iam/tenants/tenants_screen.dart';
 import '../../features/iam/tenants/tenant_form_screen.dart';
@@ -835,27 +843,139 @@ class AppRouter {
           GoRoute(
             path: '/pim/attributes',
             name: 'pim-attributes',
-            pageBuilder: (context, state) => const NoTransitionPage(
-              child: PlaceholderScreen(title: 'Atributos', spec: 'S011'),
+            pageBuilder: (context, state) => NoTransitionPage(
+              child: MultiBlocProvider(
+                providers: [
+                  BlocProvider(
+                    create: (_) => AttributeListBloc(
+                      list: ListMarketplaceAttributesUseCase(
+                        MarketplaceAttributeRepositoryImpl(KongClient()),
+                      ),
+                      delete: DeleteMarketplaceAttributeUseCase(
+                        MarketplaceAttributeRepositoryImpl(KongClient()),
+                      ),
+                    )..add(LoadAttributesEvent()),
+                  ),
+                  BlocProvider(
+                    create: (_) => AttributeFormBloc(
+                      get: GetMarketplaceAttributeUseCase(
+                        MarketplaceAttributeRepositoryImpl(KongClient()),
+                      ),
+                      create: CreateMarketplaceAttributeUseCase(
+                        MarketplaceAttributeRepositoryImpl(KongClient()),
+                      ),
+                      update: UpdateMarketplaceAttributeUseCase(
+                        MarketplaceAttributeRepositoryImpl(KongClient()),
+                      ),
+                    ),
+                  ),
+                ],
+                child: const AttributeListScreen(),
+              ),
             ),
             routes: [
               GoRoute(
                 path: 'new',
                 name: 'pim-attribute-new',
                 parentNavigatorKey: _rootNavigatorKey,
-                builder: (context, state) => const PlaceholderScreen(
-                  title: 'Nuevo Atributo',
-                  spec: 'S011',
+                builder: (context, state) => BlocProvider(
+                  create: (_) => AttributeFormBloc(
+                    get: GetMarketplaceAttributeUseCase(
+                      MarketplaceAttributeRepositoryImpl(KongClient()),
+                    ),
+                    create: CreateMarketplaceAttributeUseCase(
+                      MarketplaceAttributeRepositoryImpl(KongClient()),
+                    ),
+                    update: UpdateMarketplaceAttributeUseCase(
+                      MarketplaceAttributeRepositoryImpl(KongClient()),
+                    ),
+                  ),
+                  child: const AttributeFormScreen(),
                 ),
+              ),
+              GoRoute(
+                path: ':id',
+                name: 'pim-attribute-detail',
+                parentNavigatorKey: _rootNavigatorKey,
+                builder: (context, state) {
+                  final id = state.pathParameters['id']!;
+                  return MultiBlocProvider(
+                    providers: [
+                      BlocProvider(
+                        create: (_) => AttributeFormBloc(
+                          get: GetMarketplaceAttributeUseCase(
+                            MarketplaceAttributeRepositoryImpl(KongClient()),
+                          ),
+                          create: CreateMarketplaceAttributeUseCase(
+                            MarketplaceAttributeRepositoryImpl(KongClient()),
+                          ),
+                          update: UpdateMarketplaceAttributeUseCase(
+                            MarketplaceAttributeRepositoryImpl(KongClient()),
+                          ),
+                        )..add(LoadAttributeEvent(id)),
+                      ),
+                      BlocProvider(
+                        create: (_) => AttributeValuesBloc(
+                          list: ListAttributeValuesUseCase(
+                            MarketplaceAttributeRepositoryImpl(KongClient()),
+                          ),
+                          create: CreateAttributeValueUseCase(
+                            MarketplaceAttributeRepositoryImpl(KongClient()),
+                          ),
+                          update: UpdateAttributeValueUseCase(
+                            MarketplaceAttributeRepositoryImpl(KongClient()),
+                          ),
+                          delete: DeleteAttributeValueUseCase(
+                            MarketplaceAttributeRepositoryImpl(KongClient()),
+                          ),
+                        )..add(LoadAttributeValuesEvent(id)),
+                      ),
+                    ],
+                    child: AttributeDetailScreen(attributeId: id),
+                  );
+                },
               ),
               GoRoute(
                 path: ':id/edit',
                 name: 'pim-attribute-edit',
                 parentNavigatorKey: _rootNavigatorKey,
-                builder: (context, state) => PlaceholderScreen(
-                  title: 'Editar Atributo',
-                  spec: 'S011',
-                ),
+                builder: (context, state) {
+                  final id = state.pathParameters['id']!;
+                  return MultiBlocProvider(
+                    providers: [
+                      BlocProvider(
+                        create: (_) => AttributeFormBloc(
+                          get: GetMarketplaceAttributeUseCase(
+                            MarketplaceAttributeRepositoryImpl(KongClient()),
+                          ),
+                          create: CreateMarketplaceAttributeUseCase(
+                            MarketplaceAttributeRepositoryImpl(KongClient()),
+                          ),
+                          update: UpdateMarketplaceAttributeUseCase(
+                            MarketplaceAttributeRepositoryImpl(KongClient()),
+                          ),
+                        )..add(LoadAttributeEvent(id)),
+                      ),
+                      BlocProvider(
+                        create: (_) => AttributeValuesBloc(
+                          list: ListAttributeValuesUseCase(
+                            MarketplaceAttributeRepositoryImpl(KongClient()),
+                          ),
+                          create: CreateAttributeValueUseCase(
+                            MarketplaceAttributeRepositoryImpl(KongClient()),
+                          ),
+                          update: UpdateAttributeValueUseCase(
+                            MarketplaceAttributeRepositoryImpl(KongClient()),
+                          ),
+                          delete: DeleteAttributeValueUseCase(
+                            MarketplaceAttributeRepositoryImpl(KongClient()),
+                          ),
+                        )..add(LoadAttributeValuesEvent(id)),
+                      ),
+                    ],
+                    child: AttributeFormScreen(attributeId: id),
+                  );
+                },
               ),
             ],
           ),
