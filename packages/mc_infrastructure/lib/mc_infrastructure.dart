@@ -30,6 +30,14 @@ export 'src/pim/taxonomy/marketplace_category_repository_impl.dart';
 export 'src/pim/global_catalog/global_product_mappers.dart';
 export 'src/pim/global_catalog/global_product_repository_impl.dart';
 
+// PIM Attributes HTTP repositories (S011)
+export 'src/pim/attributes/marketplace_attribute_mappers.dart';
+export 'src/pim/attributes/marketplace_attribute_repository_impl.dart';
+
+// PIM Quickstart HTTP repositories (S012)
+export 'src/pim/quickstart/quickstart_mappers.dart';
+export 'src/pim/quickstart/quickstart_repository_impl.dart';
+
 // IAM HTTP repositories
 export 'src/iam/iam_mappers.dart';
 export 'src/iam/tenant_repository_impl.dart';
