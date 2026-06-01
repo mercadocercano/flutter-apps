@@ -29,6 +29,23 @@ export 'src/pim/taxonomy/category_tree.dart';
 export 'src/pim/taxonomy/taxonomy_repository.dart';
 export 'src/pim/taxonomy/category_params.dart';
 
+// PIM — Global Catalog (admin marketplace, S010)
+export 'src/pim/global_catalog/global_product.dart';
+export 'src/pim/global_catalog/bulk_import_result.dart';
+export 'src/pim/global_catalog/global_product_repository.dart';
+
+// PIM — Attributes (admin marketplace, S011)
+export 'src/pim/attributes/attribute_type.dart';
+export 'src/pim/attributes/attribute_value.dart';
+export 'src/pim/attributes/marketplace_attribute.dart';
+export 'src/pim/attributes/marketplace_attribute_repository.dart';
+
+// PIM — Quickstart (admin marketplace, S012)
+export 'src/pim/quickstart/business_type.dart';
+export 'src/pim/quickstart/business_type_template.dart';
+export 'src/pim/quickstart/template_analytics.dart';
+export 'src/pim/quickstart/quickstart_repository.dart';
+
 // IAM domain
 export 'src/iam/paginated_result.dart';
 export 'src/iam/tenant.dart';
