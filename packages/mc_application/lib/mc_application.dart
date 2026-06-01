@@ -27,6 +27,46 @@ export 'src/pim/taxonomy/create_category_use_case.dart';
 export 'src/pim/taxonomy/update_category_use_case.dart';
 export 'src/pim/taxonomy/delete_category_use_case.dart';
 
+// PIM — Global Catalog use cases (S010)
+export 'src/pim/global_catalog/list_global_products_use_case.dart';
+export 'src/pim/global_catalog/get_global_product_use_case.dart';
+export 'src/pim/global_catalog/create_global_product_use_case.dart';
+export 'src/pim/global_catalog/update_global_product_use_case.dart';
+export 'src/pim/global_catalog/delete_global_product_use_case.dart';
+export 'src/pim/global_catalog/verify_global_product_use_case.dart';
+export 'src/pim/global_catalog/unverify_global_product_use_case.dart';
+export 'src/pim/global_catalog/bulk_import_global_products_use_case.dart';
+
+// PIM — Quickstart use cases (S012)
+export 'src/pim/quickstart/list_business_types_use_case.dart';
+export 'src/pim/quickstart/get_business_type_use_case.dart';
+export 'src/pim/quickstart/create_business_type_use_case.dart';
+export 'src/pim/quickstart/update_business_type_use_case.dart';
+export 'src/pim/quickstart/delete_business_type_use_case.dart';
+export 'src/pim/quickstart/activate_business_type_use_case.dart';
+export 'src/pim/quickstart/deactivate_business_type_use_case.dart';
+
+// PIM — Quickstart Templates use cases (S012-T003)
+export 'src/pim/quickstart/templates/list_templates_use_case.dart';
+export 'src/pim/quickstart/templates/get_template_use_case.dart';
+export 'src/pim/quickstart/templates/create_template_use_case.dart';
+export 'src/pim/quickstart/templates/update_template_use_case.dart';
+export 'src/pim/quickstart/templates/delete_template_use_case.dart';
+export 'src/pim/quickstart/templates/duplicate_template_use_case.dart';
+export 'src/pim/quickstart/templates/get_template_analytics_use_case.dart';
+export 'src/pim/quickstart/templates/generate_template_with_ai_use_case.dart';
+
+// PIM — Attributes use cases (S011)
+export 'src/pim/attributes/list_marketplace_attributes_use_case.dart';
+export 'src/pim/attributes/get_marketplace_attribute_use_case.dart';
+export 'src/pim/attributes/create_marketplace_attribute_use_case.dart';
+export 'src/pim/attributes/update_marketplace_attribute_use_case.dart';
+export 'src/pim/attributes/delete_marketplace_attribute_use_case.dart';
+export 'src/pim/attributes/list_attribute_values_use_case.dart';
+export 'src/pim/attributes/create_attribute_value_use_case.dart';
+export 'src/pim/attributes/update_attribute_value_use_case.dart';
+export 'src/pim/attributes/delete_attribute_value_use_case.dart';
+
 // PIM — Brands use cases (S008)
 export 'src/pim/brands/get_brands_use_case.dart';
 export 'src/pim/brands/get_brand_use_case.dart';
