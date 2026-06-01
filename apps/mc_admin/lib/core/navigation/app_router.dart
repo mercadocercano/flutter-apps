@@ -7,8 +7,7 @@ import 'admin_shell.dart';
 // Screens existentes
 import '../../features/auth/presentation/screens/login_screen.dart';
 import '../../features/business_types/presentation/screens/business_types_list_screen.dart';
-import '../../features/global_products/presentation/screens/global_products_screen.dart';
-import '../../features/global_products/presentation/screens/global_product_detail_screen.dart';
+// Legacy global_products screens removed — replaced by pim/global_catalog (S010)
 import '../../features/dev_metrics/presentation/screens/dev_metrics_screen.dart';
 
 // PIM Taxonomy screens (S009)
@@ -24,10 +23,14 @@ import '../../features/pim/brands/brand_detail_screen.dart';
 import '../../features/pim/brands/blocs/brands_bloc.dart';
 import '../../features/pim/brands/blocs/brand_form_bloc.dart';
 
-// PIM Global Catalog BLoCs (S010)
+// PIM Global Catalog BLoCs + Screens (S010)
 import '../../features/pim/global_catalog/blocs/global_catalog_bloc.dart';
 import '../../features/pim/global_catalog/blocs/product_form_bloc.dart';
 import '../../features/pim/global_catalog/blocs/bulk_import_bloc.dart';
+import '../../features/pim/global_catalog/global_catalog_screen.dart';
+import '../../features/pim/global_catalog/product_form_screen.dart';
+import '../../features/pim/global_catalog/product_detail_screen.dart';
+import '../../features/pim/global_catalog/bulk_import_screen.dart';
 
 // IAM screens (S007)
 import '../../features/iam/tenants/tenants_screen.dart';
@@ -696,25 +699,101 @@ class AppRouter {
                     ),
                   ),
                 ],
-                child: const GlobalProductsScreen(),
+                child: const GlobalCatalogScreen(),
               ),
             ),
             routes: [
+              GoRoute(
+                path: 'new',
+                name: 'pim-global-catalog-new',
+                parentNavigatorKey: _rootNavigatorKey,
+                builder: (context, state) => MultiBlocProvider(
+                  providers: [
+                    BlocProvider(
+                      create: (_) => ProductFormBloc(
+                        get: GetGlobalProductUseCase(
+                          GlobalProductRepositoryImpl(KongClient()),
+                        ),
+                        create: CreateGlobalProductUseCase(
+                          GlobalProductRepositoryImpl(KongClient()),
+                        ),
+                        update: UpdateGlobalProductUseCase(
+                          GlobalProductRepositoryImpl(KongClient()),
+                        ),
+                        delete: DeleteGlobalProductUseCase(
+                          GlobalProductRepositoryImpl(KongClient()),
+                        ),
+                        verify: VerifyGlobalProductUseCase(
+                          GlobalProductRepositoryImpl(KongClient()),
+                        ),
+                        unverify: UnverifyGlobalProductUseCase(
+                          GlobalProductRepositoryImpl(KongClient()),
+                        ),
+                      ),
+                    ),
+                    BlocProvider(
+                      create: (_) => TaxonomyBloc(
+                        getTree: GetCategoryTreeUseCase(
+                          MarketplaceCategoryRepositoryImpl(KongClient()),
+                        ),
+                      ),
+                    ),
+                  ],
+                  child: const ProductFormScreen(),
+                ),
+              ),
+              GoRoute(
+                path: 'import',
+                name: 'pim-global-catalog-import',
+                parentNavigatorKey: _rootNavigatorKey,
+                builder: (context, state) => BlocProvider(
+                  create: (_) => BulkImportBloc(
+                    bulkImport: BulkImportGlobalProductsUseCase(
+                      GlobalProductRepositoryImpl(KongClient()),
+                    ),
+                  ),
+                  child: const BulkImportScreen(),
+                ),
+              ),
               GoRoute(
                 path: ':id',
                 name: 'pim-global-catalog-detail',
                 parentNavigatorKey: _rootNavigatorKey,
                 builder: (context, state) {
                   final id = state.pathParameters['id']!;
+                  return BlocProvider(
+                    create: (_) => ProductFormBloc(
+                      get: GetGlobalProductUseCase(
+                        GlobalProductRepositoryImpl(KongClient()),
+                      ),
+                      create: CreateGlobalProductUseCase(
+                        GlobalProductRepositoryImpl(KongClient()),
+                      ),
+                      update: UpdateGlobalProductUseCase(
+                        GlobalProductRepositoryImpl(KongClient()),
+                      ),
+                      delete: DeleteGlobalProductUseCase(
+                        GlobalProductRepositoryImpl(KongClient()),
+                      ),
+                      verify: VerifyGlobalProductUseCase(
+                        GlobalProductRepositoryImpl(KongClient()),
+                      ),
+                      unverify: UnverifyGlobalProductUseCase(
+                        GlobalProductRepositoryImpl(KongClient()),
+                      ),
+                    ),
+                    child: ProductDetailScreen(productId: id),
+                  );
+                },
+              ),
+              GoRoute(
+                path: ':id/edit',
+                name: 'pim-global-catalog-edit',
+                parentNavigatorKey: _rootNavigatorKey,
+                builder: (context, state) {
+                  final id = state.pathParameters['id']!;
                   return MultiBlocProvider(
                     providers: [
-                      BlocProvider(
-                        create: (_) => GlobalCatalogBloc(
-                          list: ListGlobalProductsUseCase(
-                            GlobalProductRepositoryImpl(KongClient()),
-                          ),
-                        ),
-                      ),
                       BlocProvider(
                         create: (_) => ProductFormBloc(
                           get: GetGlobalProductUseCase(
@@ -735,17 +814,17 @@ class AppRouter {
                           unverify: UnverifyGlobalProductUseCase(
                             GlobalProductRepositoryImpl(KongClient()),
                           ),
-                        )..add(LoadProductEvent(id)),
+                        ),
                       ),
                       BlocProvider(
-                        create: (_) => BulkImportBloc(
-                          bulkImport: BulkImportGlobalProductsUseCase(
-                            GlobalProductRepositoryImpl(KongClient()),
+                        create: (_) => TaxonomyBloc(
+                          getTree: GetCategoryTreeUseCase(
+                            MarketplaceCategoryRepositoryImpl(KongClient()),
                           ),
                         ),
                       ),
                     ],
-                    child: GlobalProductDetailScreen(productId: id),
+                    child: ProductFormScreen(productId: id),
                   );
                 },
               ),
