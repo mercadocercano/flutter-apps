@@ -177,30 +177,33 @@ class _FilterBar extends StatelessWidget {
   Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
-      child: Row(
-        children: [
-          const Text('Fuente:'),
-          const SizedBox(width: 8),
-          DropdownButton<String?>(
-            value: sourceFilter,
-            hint: const Text('Todas'),
-            items: const [
-              DropdownMenuItem(value: null, child: Text('Todas')),
-            ],
-            onChanged: onSourceChanged,
-          ),
-          const SizedBox(width: 16),
-          const Text('Tipo:'),
-          const SizedBox(width: 8),
-          DropdownButton<String?>(
-            value: businessTypeFilter,
-            hint: const Text('Todos'),
-            items: const [
-              DropdownMenuItem(value: null, child: Text('Todos')),
-            ],
-            onChanged: onBusinessTypeChanged,
-          ),
-        ],
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        child: Row(
+          children: [
+            const Text('Fuente:'),
+            const SizedBox(width: 8),
+            DropdownButton<String?>(
+              value: sourceFilter,
+              hint: const Text('Todas'),
+              items: const [
+                DropdownMenuItem(value: null, child: Text('Todas')),
+              ],
+              onChanged: onSourceChanged,
+            ),
+            const SizedBox(width: 16),
+            const Text('Tipo:'),
+            const SizedBox(width: 8),
+            DropdownButton<String?>(
+              value: businessTypeFilter,
+              hint: const Text('Todos'),
+              items: const [
+                DropdownMenuItem(value: null, child: Text('Todos')),
+              ],
+              onChanged: onBusinessTypeChanged,
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -342,11 +345,14 @@ class _BulkActionBar extends StatelessWidget {
           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
           child: Row(
             children: [
-              Text(
-                '$selectedCount seleccionados',
-                style: const TextStyle(fontWeight: FontWeight.w600),
+              Flexible(
+                child: Text(
+                  '$selectedCount seleccionados',
+                  style: const TextStyle(fontWeight: FontWeight.w600),
+                  overflow: TextOverflow.ellipsis,
+                ),
               ),
-              const Spacer(),
+              const SizedBox(width: 12),
               OutlinedButton.icon(
                 icon: const Icon(Icons.delete_outline, size: 16),
                 label: Text('Eliminar ($selectedCount)'),

@@ -681,4 +681,350 @@ void main() {
       expect(find.byType(CircularProgressIndicator), findsOneWidget);
     });
   });
+
+  // ==========================================================================
+  // T005 — JobsScreen: BDD escenarios 1, 2, 3
+  // ==========================================================================
+
+  group('JobsScreen — lista con badges coloreados y progreso', () {
+    setUpAll(() {
+      registerFallbackValue(LoadJobsEvent());
+      registerFallbackValue(RefreshJobsEvent());
+      registerFallbackValue(CancelJobEvent(''));
+      registerFallbackValue(RetryJobEvent(''));
+      registerFallbackValue(StopPollingEvent());
+    });
+
+    // BDD Escenario 1: badges coloreados y LinearProgressIndicator para running.
+    testWidgets(
+        'JobsScreen_WithRunningJob_ShowsProgressBarAndRunningBadge',
+        (tester) async {
+      tester.view.physicalSize = const Size(1600, 900);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      // Arrange
+      final state = JobsLoaded(
+        jobs: [
+          _buildRunningJob(id: 'run', progress: 0.45),
+          _buildJob(id: 'done', status: WebJobStatus.completed),
+        ],
+        hasRunningJobs: true,
+      );
+
+      // Act
+      await tester.pumpWidget(_buildJobsScreen(state: state));
+      await tester.pump();
+
+      // Assert — barra de progreso para el job running
+      expect(find.byType(LinearProgressIndicator), findsOneWidget);
+      // Assert — badge "Corriendo" (puede haber más de uno: chip de filtro + badge de fila)
+      expect(find.text('Corriendo'), findsWidgets);
+      // Assert — badge "Completado"
+      expect(find.text('Completado'), findsOneWidget);
+    });
+
+    // BDD Escenario 2: chip "Auto-actualizando" visible cuando hasRunningJobs=true.
+    testWidgets(
+        'JobsScreen_WhenHasRunningJobs_ShowsAutoUpdateChip',
+        (tester) async {
+      // Arrange
+      final state = JobsLoaded(
+        jobs: [_buildRunningJob()],
+        hasRunningJobs: true,
+      );
+
+      // Act
+      await tester.pumpWidget(_buildJobsScreen(state: state));
+      await tester.pump();
+
+      // Assert
+      expect(find.textContaining('Auto-actualizando cada 5s'), findsOneWidget);
+    });
+
+    testWidgets(
+        'JobsScreen_WhenNoRunningJobs_NoAutoUpdateChip',
+        (tester) async {
+      // Arrange
+      final state = JobsLoaded(
+        jobs: [_buildJob(id: 'j1')],
+        hasRunningJobs: false,
+      );
+
+      // Act
+      await tester.pumpWidget(_buildJobsScreen(state: state));
+      await tester.pump();
+
+      // Assert
+      expect(find.textContaining('Auto-actualizando'), findsNothing);
+    });
+
+    // BDD Escenario 3: botón Cancelar solo visible para jobs running.
+    testWidgets(
+        'JobsScreen_CancelButtonOnlyVisibleForRunningJob',
+        (tester) async {
+      tester.view.physicalSize = const Size(1600, 900);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      // Arrange
+      final state = JobsLoaded(
+        jobs: [
+          _buildRunningJob(id: 'run'),
+          _buildJob(id: 'done', status: WebJobStatus.completed),
+        ],
+        hasRunningJobs: true,
+      );
+
+      // Act
+      await tester.pumpWidget(_buildJobsScreen(state: state));
+      await tester.pump();
+
+      // Assert — exactamente un botón Cancelar
+      expect(find.byTooltip('Cancelar'), findsOneWidget);
+      // Assert — no hay Reintentar
+      expect(find.byTooltip('Reintentar'), findsNothing);
+    });
+
+    testWidgets(
+        'JobsScreen_RetryButtonOnlyVisibleForFailedJob',
+        (tester) async {
+      tester.view.physicalSize = const Size(1600, 900);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      // Arrange
+      final state = JobsLoaded(
+        jobs: [
+          _buildFailedJob(id: 'fail'),
+          _buildJob(id: 'can', status: WebJobStatus.cancelled),
+        ],
+        hasRunningJobs: false,
+      );
+
+      // Act
+      await tester.pumpWidget(_buildJobsScreen(state: state));
+      await tester.pump();
+
+      // Assert
+      expect(find.byTooltip('Reintentar'), findsOneWidget);
+      expect(find.byTooltip('Cancelar'), findsNothing);
+    });
+
+    testWidgets('JobsScreen_ShowsAllStatusFilterChips', (tester) async {
+      // Arrange
+      final state = JobsLoaded(jobs: const [], hasRunningJobs: false);
+
+      // Act
+      await tester.pumpWidget(_buildJobsScreen(state: state));
+      await tester.pump();
+
+      // Assert
+      expect(find.text('Todos'), findsOneWidget);
+      expect(find.text('Corriendo'), findsOneWidget);
+      expect(find.text('Completados'), findsOneWidget);
+      expect(find.text('Fallidos'), findsOneWidget);
+      expect(find.text('Cancelados'), findsOneWidget);
+    });
+
+    testWidgets(
+        'JobsScreen_CancelTap_ShowsConfirmDialog',
+        (tester) async {
+      tester.view.physicalSize = const Size(1600, 900);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      // Arrange
+      final bloc = MockJobsBloc();
+      when(() => bloc.state).thenReturn(
+        JobsLoaded(jobs: [_buildRunningJob(id: 'rj')], hasRunningJobs: true),
+      );
+
+      // Act
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: BlocProvider<JobsBloc>.value(
+              value: bloc,
+              child: const JobsScreen(),
+            ),
+          ),
+        ),
+      );
+      await tester.pump();
+
+      await tester.tap(find.byTooltip('Cancelar'));
+      await tester.pumpAndSettle();
+
+      // Assert — diálogo de confirmación visible (título + botón = múltiples widgets)
+      expect(find.text('Cancelar job'), findsWidgets);
+    });
+  });
+
+  // ==========================================================================
+  // T005 — WebProductsScreen: BDD escenarios 4 y 5
+  // ==========================================================================
+
+  group('WebProductsScreen — multi-select y bulk assign', () {
+    setUpAll(() {
+      registerFallbackValue(LoadWebProductsEvent());
+      registerFallbackValue(SelectProductEvent(''));
+      registerFallbackValue(DeselectProductEvent(''));
+      registerFallbackValue(SelectAllProductsEvent());
+      registerFallbackValue(DeselectAllProductsEvent());
+      registerFallbackValue(DeleteWebProductEvent(''));
+      registerFallbackValue(BulkDeleteWebProductsEvent());
+      registerFallbackValue(BulkAssignBusinessTypeEvent(''));
+      registerFallbackValue(
+        AssignBusinessTypeEvent(id: '', businessTypeId: ''),
+      );
+    });
+
+    // BDD Escenario 4: seleccionar 3 ítems → barra de acciones bulk visible.
+    testWidgets(
+        'WebProductsScreen_SelectThreeItems_ShowsBulkActionBar',
+        (tester) async {
+      tester.view.physicalSize = const Size(1440, 900);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      // Arrange
+      final products = [
+        _buildProduct(id: 'p1', name: 'Producto 1'),
+        _buildProduct(id: 'p2', name: 'Producto 2'),
+        _buildProduct(id: 'p3', name: 'Producto 3'),
+      ];
+      final state = WebProductsLoaded(
+        products: products,
+        selectedIds: const {'p1', 'p2', 'p3'},
+      );
+
+      // Act
+      await tester.pumpWidget(_buildWebProductsScreen(state: state));
+      await tester.pump();
+
+      // Assert
+      expect(find.text('3 seleccionados'), findsOneWidget);
+      expect(find.textContaining('Asignar tipo (3)'), findsOneWidget);
+      expect(find.textContaining('Eliminar (3)'), findsOneWidget);
+    });
+
+    testWidgets(
+        'WebProductsScreen_NoSelection_NoBulkActionBar',
+        (tester) async {
+      // Arrange
+      final state = WebProductsLoaded(
+        products: [_buildProduct(id: 'p1')],
+        selectedIds: const {},
+      );
+
+      // Act
+      await tester.pumpWidget(_buildWebProductsScreen(state: state));
+      await tester.pump();
+
+      // Assert
+      expect(find.textContaining('seleccionados'), findsNothing);
+    });
+
+    // BDD Escenario 5: "Asignar tipo" abre diálogo selector.
+    testWidgets(
+        'WebProductsScreen_BulkAssignTap_ShowsBusinessTypeDialog',
+        (tester) async {
+      tester.view.physicalSize = const Size(1440, 900);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      // Arrange
+      final products = [
+        _buildProduct(id: 'p1'),
+        _buildProduct(id: 'p2'),
+      ];
+      final state = WebProductsLoaded(
+        products: products,
+        selectedIds: const {'p1', 'p2'},
+      );
+
+      // Act
+      await tester.pumpWidget(_buildWebProductsScreen(state: state));
+      await tester.pump();
+
+      await tester.tap(find.textContaining('Asignar tipo (2)'));
+      await tester.pumpAndSettle();
+
+      // Assert
+      expect(find.text('Asignar tipo de comercio'), findsOneWidget);
+      expect(find.text('Ferretería'), findsOneWidget);
+      expect(find.text('Supermercado'), findsOneWidget);
+    });
+
+    testWidgets(
+        'WebProductsScreen_ProductWithoutBusinessType_ShowsSinAsignarBadge',
+        (tester) async {
+      // Arrange
+      final state = WebProductsLoaded(
+        products: [_buildProduct(id: 'p1', businessTypeId: null)],
+        selectedIds: const {},
+      );
+
+      // Act
+      await tester.pumpWidget(_buildWebProductsScreen(state: state));
+      await tester.pump();
+
+      // Assert
+      expect(find.text('Sin asignar'), findsOneWidget);
+    });
+
+    testWidgets(
+        'WebProductsScreen_ProductWithBusinessType_ShowsBadgeWithId',
+        (tester) async {
+      // Arrange
+      final state = WebProductsLoaded(
+        products: [_buildProduct(id: 'p1', businessTypeId: 'ferreteria')],
+        selectedIds: const {},
+      );
+
+      // Act
+      await tester.pumpWidget(_buildWebProductsScreen(state: state));
+      await tester.pump();
+
+      // Assert
+      expect(find.text('ferreteria'), findsOneWidget);
+    });
+
+    testWidgets(
+        'WebProductsScreen_CheckboxSelect_DispatchesSelectProductEvent',
+        (tester) async {
+      // Arrange
+      final bloc = MockWebProductsBloc();
+      final product = _buildProduct(id: 'p1');
+      when(() => bloc.state).thenReturn(
+        WebProductsLoaded(products: [product], selectedIds: const {}),
+      );
+
+      // Act
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: BlocProvider<WebProductsBloc>.value(
+              value: bloc,
+              child: const WebProductsScreen(),
+            ),
+          ),
+        ),
+      );
+      await tester.pump();
+
+      await tester.tap(find.byType(Checkbox).first);
+      await tester.pump();
+
+      // Assert — verifica que se despachó un SelectProductEvent (sin igualdad estricta)
+      verify(() => bloc.add(any(that: isA<SelectProductEvent>()))).called(1);
+    });
+  });
 }

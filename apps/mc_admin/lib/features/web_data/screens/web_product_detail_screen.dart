@@ -159,7 +159,7 @@ class _InfoTab extends StatelessWidget {
                   product.imageUrl!,
                   height: 200,
                   fit: BoxFit.cover,
-                  errorBuilder: (_, __, ___) => const Icon(
+                  errorBuilder: (context, error, stack) => const Icon(
                     Icons.broken_image_outlined,
                     size: 64,
                     color: Colors.grey,

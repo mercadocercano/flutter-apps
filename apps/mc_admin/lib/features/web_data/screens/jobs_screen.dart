@@ -73,7 +73,7 @@ class _JobsScreenState extends State<JobsScreen> {
       AdminColumn(
         label: 'Estado',
         width: 110,
-        builder: (job) => StatusBadge.fromString(job.status.name),
+        builder: (job) => _JobStatusBadge(status: job.status),
       ),
       AdminColumn(
         label: 'Progreso',
@@ -136,47 +136,50 @@ class _FilterBar extends StatelessWidget {
   Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
-      child: Row(
-        children: [
-          _StatusChip(
-            label: 'Todos',
-            value: null,
-            selected: selectedStatus == null,
-            onSelected: onStatusChanged,
-          ),
-          const SizedBox(width: 8),
-          _StatusChip(
-            label: 'Corriendo',
-            value: 'running',
-            selected: selectedStatus == 'running',
-            onSelected: onStatusChanged,
-          ),
-          const SizedBox(width: 8),
-          _StatusChip(
-            label: 'Completados',
-            value: 'completed',
-            selected: selectedStatus == 'completed',
-            onSelected: onStatusChanged,
-          ),
-          const SizedBox(width: 8),
-          _StatusChip(
-            label: 'Fallidos',
-            value: 'failed',
-            selected: selectedStatus == 'failed',
-            onSelected: onStatusChanged,
-          ),
-          const SizedBox(width: 8),
-          _StatusChip(
-            label: 'Cancelados',
-            value: 'cancelled',
-            selected: selectedStatus == 'cancelled',
-            onSelected: onStatusChanged,
-          ),
-          if (hasRunningJobs) ...[
-            const SizedBox(width: 16),
-            _AutoUpdateChip(),
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        child: Row(
+          children: [
+            _StatusChip(
+              label: 'Todos',
+              value: null,
+              selected: selectedStatus == null,
+              onSelected: onStatusChanged,
+            ),
+            const SizedBox(width: 8),
+            _StatusChip(
+              label: 'Corriendo',
+              value: 'running',
+              selected: selectedStatus == 'running',
+              onSelected: onStatusChanged,
+            ),
+            const SizedBox(width: 8),
+            _StatusChip(
+              label: 'Completados',
+              value: 'completed',
+              selected: selectedStatus == 'completed',
+              onSelected: onStatusChanged,
+            ),
+            const SizedBox(width: 8),
+            _StatusChip(
+              label: 'Fallidos',
+              value: 'failed',
+              selected: selectedStatus == 'failed',
+              onSelected: onStatusChanged,
+            ),
+            const SizedBox(width: 8),
+            _StatusChip(
+              label: 'Cancelados',
+              value: 'cancelled',
+              selected: selectedStatus == 'cancelled',
+              onSelected: onStatusChanged,
+            ),
+            if (hasRunningJobs) ...[
+              const SizedBox(width: 16),
+              _AutoUpdateChip(),
+            ],
           ],
-        ],
+        ),
       ),
     );
   }
@@ -330,5 +333,26 @@ class _RowActions extends StatelessWidget {
     if (confirmed == true && context.mounted) {
       context.read<JobsBloc>().add(CancelJobEvent(job.id));
     }
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Badge de estado de job — muestra etiqueta en español sin customLabel raw.
+// ---------------------------------------------------------------------------
+
+class _JobStatusBadge extends StatelessWidget {
+  final WebJobStatus status;
+
+  const _JobStatusBadge({required this.status});
+
+  @override
+  Widget build(BuildContext context) {
+    final adminStatus = switch (status) {
+      WebJobStatus.running => AdminStatus.running,
+      WebJobStatus.completed => AdminStatus.completed,
+      WebJobStatus.failed => AdminStatus.failed,
+      WebJobStatus.cancelled => AdminStatus.cancelled,
+    };
+    return StatusBadge(status: adminStatus);
   }
 }
