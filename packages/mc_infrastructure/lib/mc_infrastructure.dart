@@ -48,5 +48,8 @@ export 'src/iam/plan_repository_impl.dart';
 export 'src/webdata/web_data_mappers.dart';
 export 'src/webdata/web_data_repository_impl.dart';
 
+// Admin Dashboard HTTP repositories (S014)
+export 'src/admin/dashboard/dashboard_repository_impl.dart';
+
 // Storage
 export 'src/storage/secure_session_storage.dart';

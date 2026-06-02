@@ -98,6 +98,11 @@ export 'src/webdata/assign_business_type_use_case.dart';
 export 'src/webdata/bulk_assign_business_type_use_case.dart';
 export 'src/webdata/get_price_history_use_case.dart';
 
+// Admin Dashboard use cases (S014)
+export 'src/admin/dashboard/get_dashboard_stats_use_case.dart';
+export 'src/admin/dashboard/get_services_health_use_case.dart';
+export 'src/admin/dashboard/refresh_dashboard_use_case.dart';
+
 // Ports
 export 'src/ports/auth_port.dart';
 export 'src/ports/catalog_port.dart';

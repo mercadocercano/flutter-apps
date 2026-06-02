@@ -83,6 +83,10 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:mc_application/mc_application.dart';
 import 'package:mc_infrastructure/mc_infrastructure.dart';
 
+// Dashboard (S014)
+import '../../features/dashboard/dashboard_screen.dart';
+import '../../features/dashboard/blocs/dashboard_bloc.dart';
+
 // Placeholder screens para S008-S014 (se reemplazan cuando se implementen)
 import '../placeholders/placeholder_screen.dart';
 
@@ -134,12 +138,23 @@ class AppRouter {
         navigatorKey: _shellNavigatorKey,
         builder: (context, state, child) => AdminShell(child: child),
         routes: [
-          // Dashboard
+          // Dashboard (S014)
           GoRoute(
             path: '/dashboard',
             name: 'dashboard',
-            pageBuilder: (context, state) =>
-                const NoTransitionPage(child: DevMetricsScreen()),
+            pageBuilder: (context, state) => NoTransitionPage(
+              child: BlocProvider(
+                create: (_) => DashboardBloc(
+                  getStats: GetAdminDashboardStatsUseCase(
+                    DashboardRepositoryImpl(KongClient()),
+                  ),
+                  refresh: RefreshDashboardUseCase(
+                    DashboardRepositoryImpl(KongClient()),
+                  ),
+                )..add(AdminDashboardLoadEvent()),
+                child: const DashboardScreen(),
+              ),
+            ),
           ),
 
           // --- IAM (S007) ---
