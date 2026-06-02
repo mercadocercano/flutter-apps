@@ -77,6 +77,27 @@ export 'src/pim/brands/verify_brand_use_case.dart';
 export 'src/pim/brands/unverify_brand_use_case.dart';
 export 'src/pim/brands/validate_brand_name_use_case.dart';
 
+// Web Data use cases (S013)
+export 'src/webdata/get_dashboard_stats_use_case.dart';
+export 'src/webdata/list_sources_use_case.dart';
+export 'src/webdata/get_source_use_case.dart';
+export 'src/webdata/create_source_use_case.dart';
+export 'src/webdata/update_source_use_case.dart';
+export 'src/webdata/delete_source_use_case.dart';
+export 'src/webdata/trigger_source_use_case.dart';
+export 'src/webdata/list_jobs_use_case.dart';
+export 'src/webdata/get_job_use_case.dart';
+export 'src/webdata/cancel_job_use_case.dart';
+export 'src/webdata/retry_job_use_case.dart';
+export 'src/webdata/list_web_products_use_case.dart';
+export 'src/webdata/get_web_product_use_case.dart';
+export 'src/webdata/update_web_product_use_case.dart';
+export 'src/webdata/delete_web_product_use_case.dart';
+export 'src/webdata/bulk_delete_web_products_use_case.dart';
+export 'src/webdata/assign_business_type_use_case.dart';
+export 'src/webdata/bulk_assign_business_type_use_case.dart';
+export 'src/webdata/get_price_history_use_case.dart';
+
 // Ports
 export 'src/ports/auth_port.dart';
 export 'src/ports/catalog_port.dart';
