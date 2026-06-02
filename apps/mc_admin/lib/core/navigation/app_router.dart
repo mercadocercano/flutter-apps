@@ -40,11 +40,16 @@ import '../../features/pim/attributes/attribute_list_screen.dart';
 import '../../features/pim/attributes/attribute_form_screen.dart';
 import '../../features/pim/attributes/attribute_detail_screen.dart';
 
-// PIM Quickstart BLoCs (S012-T004)
+// PIM Quickstart BLoCs + Screens (S012-T005)
 import '../../features/pim/quickstart/blocs/business_types_bloc.dart';
 import '../../features/pim/quickstart/blocs/templates_bloc.dart';
 import '../../features/pim/quickstart/blocs/template_form_bloc.dart';
 import '../../features/pim/quickstart/blocs/template_analytics_bloc.dart';
+import '../../features/pim/quickstart/business_types_screen.dart';
+import '../../features/pim/quickstart/business_type_form_screen.dart';
+import '../../features/pim/quickstart/templates_screen.dart';
+import '../../features/pim/quickstart/template_form_screen.dart';
+import '../../features/pim/quickstart/template_analytics_screen.dart';
 
 // IAM screens (S007)
 import '../../features/iam/tenants/tenants_screen.dart';
@@ -1016,40 +1021,52 @@ class AppRouter {
             ),
           ),
 
-          // --- Quickstart Dinámico (S012-T004) ---
+          // --- Quickstart Dinámico (S012-T005) ---
           GoRoute(
             path: '/quickstart/business-types',
             name: 'quickstart-business-types',
             pageBuilder: (context, state) => NoTransitionPage(
-              child: MultiBlocProvider(
-                providers: [
-                  BlocProvider(
-                    create: (_) => BusinessTypesBloc(
-                      list: ListBusinessTypesUseCase(
-                        QuickstartRepositoryImpl(KongClient()),
-                      ),
-                      activate: ActivateBusinessTypeUseCase(
-                        QuickstartRepositoryImpl(KongClient()),
-                      ),
-                      deactivate: DeactivateBusinessTypeUseCase(
-                        QuickstartRepositoryImpl(KongClient()),
-                      ),
-                      delete: DeleteBusinessTypeUseCase(
-                        QuickstartRepositoryImpl(KongClient()),
-                      ),
-                    )..add(LoadBusinessTypesEvent()),
+              child: BlocProvider(
+                create: (_) => BusinessTypesBloc(
+                  list: ListBusinessTypesUseCase(
+                    QuickstartRepositoryImpl(KongClient()),
                   ),
-                ],
-                child: const BusinessTypesListScreen(),
+                  activate: ActivateBusinessTypeUseCase(
+                    QuickstartRepositoryImpl(KongClient()),
+                  ),
+                  deactivate: DeactivateBusinessTypeUseCase(
+                    QuickstartRepositoryImpl(KongClient()),
+                  ),
+                  delete: DeleteBusinessTypeUseCase(
+                    QuickstartRepositoryImpl(KongClient()),
+                  ),
+                )..add(LoadBusinessTypesEvent()),
+                child: const BusinessTypesScreen(),
               ),
             ),
+            routes: [
+              GoRoute(
+                path: 'new',
+                name: 'quickstart-business-type-new',
+                parentNavigatorKey: _rootNavigatorKey,
+                builder: (context, state) => const BusinessTypeFormScreen(),
+              ),
+              GoRoute(
+                path: ':id/edit',
+                name: 'quickstart-business-type-edit',
+                parentNavigatorKey: _rootNavigatorKey,
+                builder: (context, state) {
+                  final id = state.pathParameters['id']!;
+                  return BusinessTypeFormScreen(businessTypeId: id);
+                },
+              ),
+            ],
           ),
           GoRoute(
             path: '/quickstart/templates/:businessTypeId',
             name: 'quickstart-templates',
             pageBuilder: (context, state) {
-              final businessTypeId =
-                  state.pathParameters['businessTypeId']!;
+              final businessTypeId = state.pathParameters['businessTypeId']!;
               return NoTransitionPage(
                 child: MultiBlocProvider(
                   providers: [
@@ -1083,14 +1100,69 @@ class AppRouter {
                       ),
                     ),
                   ],
-                  child: PlaceholderScreen(
-                    title: 'Templates',
-                    spec: 'S012-T005',
-                  ),
+                  child: TemplatesScreen(businessTypeId: businessTypeId),
                 ),
               );
             },
             routes: [
+              GoRoute(
+                path: 'new',
+                name: 'quickstart-template-new',
+                parentNavigatorKey: _rootNavigatorKey,
+                builder: (context, state) {
+                  final businessTypeId =
+                      state.pathParameters['businessTypeId']!;
+                  return BlocProvider(
+                    create: (_) => TemplateFormBloc(
+                      get: GetTemplateUseCase(
+                        QuickstartRepositoryImpl(KongClient()),
+                      ),
+                      create: CreateTemplateUseCase(
+                        QuickstartRepositoryImpl(KongClient()),
+                      ),
+                      update: UpdateTemplateUseCase(
+                        QuickstartRepositoryImpl(KongClient()),
+                      ),
+                      generateAI: GenerateTemplateWithAIUseCase(
+                        QuickstartRepositoryImpl(KongClient()),
+                      ),
+                    ),
+                    child: TemplateFormScreen(
+                      businessTypeId: businessTypeId,
+                    ),
+                  );
+                },
+              ),
+              GoRoute(
+                path: ':templateId/edit',
+                name: 'quickstart-template-edit',
+                parentNavigatorKey: _rootNavigatorKey,
+                builder: (context, state) {
+                  final businessTypeId =
+                      state.pathParameters['businessTypeId']!;
+                  final templateId = state.pathParameters['templateId']!;
+                  return BlocProvider(
+                    create: (_) => TemplateFormBloc(
+                      get: GetTemplateUseCase(
+                        QuickstartRepositoryImpl(KongClient()),
+                      ),
+                      create: CreateTemplateUseCase(
+                        QuickstartRepositoryImpl(KongClient()),
+                      ),
+                      update: UpdateTemplateUseCase(
+                        QuickstartRepositoryImpl(KongClient()),
+                      ),
+                      generateAI: GenerateTemplateWithAIUseCase(
+                        QuickstartRepositoryImpl(KongClient()),
+                      ),
+                    ),
+                    child: TemplateFormScreen(
+                      businessTypeId: businessTypeId,
+                      templateId: templateId,
+                    ),
+                  );
+                },
+              ),
               GoRoute(
                 path: ':templateId/analytics',
                 name: 'quickstart-template-analytics',
@@ -1103,10 +1175,7 @@ class AppRouter {
                         QuickstartRepositoryImpl(KongClient()),
                       ),
                     )..add(LoadTemplateAnalyticsEvent(templateId)),
-                    child: PlaceholderScreen(
-                      title: 'Analytics de Template',
-                      spec: 'S012-T005',
-                    ),
+                    child: TemplateAnalyticsScreen(templateId: templateId),
                   );
                 },
               ),
