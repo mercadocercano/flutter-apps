@@ -40,6 +40,13 @@ import '../../features/pim/attributes/attribute_list_screen.dart';
 import '../../features/pim/attributes/attribute_form_screen.dart';
 import '../../features/pim/attributes/attribute_detail_screen.dart';
 
+// Web Data BLoCs (S013-T003)
+import '../../features/web_data/blocs/web_data_dashboard_bloc.dart';
+import '../../features/web_data/blocs/sources_bloc.dart';
+import '../../features/web_data/blocs/source_form_bloc.dart';
+import '../../features/web_data/blocs/jobs_bloc.dart';
+import '../../features/web_data/blocs/web_products_bloc.dart';
+
 // PIM Quickstart BLoCs + Screens (S012-T005)
 import '../../features/pim/quickstart/blocs/business_types_bloc.dart';
 import '../../features/pim/quickstart/blocs/templates_bloc.dart';
@@ -995,29 +1002,111 @@ class AppRouter {
           GoRoute(
             path: '/web-data/dashboard',
             name: 'webdata-dashboard',
-            pageBuilder: (context, state) => const NoTransitionPage(
-              child: PlaceholderScreen(title: 'Web Data Dashboard', spec: 'S013'),
+            pageBuilder: (context, state) => NoTransitionPage(
+              child: MultiBlocProvider(
+                providers: [
+                  BlocProvider(
+                    create: (_) => WebDataDashboardBloc(
+                      getStats: GetDashboardStatsUseCase(
+                        WebDataRepositoryImpl(KongClient()),
+                      ),
+                      listJobs: ListJobsUseCase(
+                        WebDataRepositoryImpl(KongClient()),
+                      ),
+                    )..add(LoadDashboardEvent()),
+                  ),
+                ],
+                child: const PlaceholderScreen(
+                  title: 'Web Data Dashboard',
+                  spec: 'S013',
+                ),
+              ),
             ),
           ),
           GoRoute(
             path: '/web-data/sources',
             name: 'webdata-sources',
-            pageBuilder: (context, state) => const NoTransitionPage(
-              child: PlaceholderScreen(title: 'Fuentes', spec: 'S013'),
+            pageBuilder: (context, state) => NoTransitionPage(
+              child: MultiBlocProvider(
+                providers: [
+                  BlocProvider(
+                    create: (_) => SourcesBloc(
+                      list: ListSourcesUseCase(
+                        WebDataRepositoryImpl(KongClient()),
+                      ),
+                      trigger: TriggerSourceUseCase(
+                        WebDataRepositoryImpl(KongClient()),
+                      ),
+                      delete: DeleteSourceUseCase(
+                        WebDataRepositoryImpl(KongClient()),
+                      ),
+                    )..add(LoadSourcesEvent()),
+                  ),
+                  BlocProvider(
+                    create: (_) => SourceFormBloc(
+                      get: GetSourceUseCase(
+                        WebDataRepositoryImpl(KongClient()),
+                      ),
+                      create: CreateSourceUseCase(
+                        WebDataRepositoryImpl(KongClient()),
+                      ),
+                      update: UpdateSourceUseCase(
+                        WebDataRepositoryImpl(KongClient()),
+                      ),
+                    ),
+                  ),
+                ],
+                child: const PlaceholderScreen(title: 'Fuentes', spec: 'S013'),
+              ),
             ),
           ),
           GoRoute(
             path: '/web-data/jobs',
             name: 'webdata-jobs',
-            pageBuilder: (context, state) => const NoTransitionPage(
-              child: PlaceholderScreen(title: 'Jobs', spec: 'S013'),
+            pageBuilder: (context, state) => NoTransitionPage(
+              child: BlocProvider(
+                create: (_) => JobsBloc(
+                  list: ListJobsUseCase(
+                    WebDataRepositoryImpl(KongClient()),
+                  ),
+                  cancel: CancelJobUseCase(
+                    WebDataRepositoryImpl(KongClient()),
+                  ),
+                  retry: RetryJobUseCase(
+                    WebDataRepositoryImpl(KongClient()),
+                  ),
+                )..add(LoadJobsEvent()),
+                child: const PlaceholderScreen(title: 'Jobs', spec: 'S013'),
+              ),
             ),
           ),
           GoRoute(
             path: '/web-data/products',
             name: 'webdata-products',
-            pageBuilder: (context, state) => const NoTransitionPage(
-              child: PlaceholderScreen(title: 'Productos Web', spec: 'S013'),
+            pageBuilder: (context, state) => NoTransitionPage(
+              child: BlocProvider(
+                create: (_) => WebProductsBloc(
+                  list: ListWebProductsUseCase(
+                    WebDataRepositoryImpl(KongClient()),
+                  ),
+                  delete: DeleteWebProductUseCase(
+                    WebDataRepositoryImpl(KongClient()),
+                  ),
+                  bulkDelete: BulkDeleteWebProductsUseCase(
+                    WebDataRepositoryImpl(KongClient()),
+                  ),
+                  assign: AssignBusinessTypeUseCase(
+                    WebDataRepositoryImpl(KongClient()),
+                  ),
+                  bulkAssign: BulkAssignBusinessTypeUseCase(
+                    WebDataRepositoryImpl(KongClient()),
+                  ),
+                )..add(LoadWebProductsEvent()),
+                child: const PlaceholderScreen(
+                  title: 'Productos Web',
+                  spec: 'S013',
+                ),
+              ),
             ),
           ),
 

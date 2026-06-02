@@ -44,5 +44,9 @@ export 'src/iam/tenant_repository_impl.dart';
 export 'src/iam/role_repository_impl.dart';
 export 'src/iam/plan_repository_impl.dart';
 
+// Web Data HTTP repositories (S013)
+export 'src/webdata/web_data_mappers.dart';
+export 'src/webdata/web_data_repository_impl.dart';
+
 // Storage
 export 'src/storage/secure_session_storage.dart';
