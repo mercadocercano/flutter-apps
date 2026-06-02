@@ -48,3 +48,8 @@ lcov.info
 # macOS
 .DS_Store
 **/.DS_Store
+
+# Coverage artifacts
+coverage_full/
+coverage_gc/
+**/*.vm.json

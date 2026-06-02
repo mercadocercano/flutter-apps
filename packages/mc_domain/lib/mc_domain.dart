@@ -56,6 +56,16 @@ export 'src/webdata/web_product.dart';
 export 'src/webdata/web_data_dashboard_stats.dart';
 export 'src/webdata/web_data_repository.dart';
 
+// Admin — Dashboard (S014)
+export 'src/admin/dashboard/service_status.dart';
+export 'src/admin/dashboard/service_health.dart';
+export 'src/admin/dashboard/iam_stats.dart';
+export 'src/admin/dashboard/pim_stats.dart';
+export 'src/admin/dashboard/web_data_stats.dart';
+export 'src/admin/dashboard/quickstart_stats.dart';
+export 'src/admin/dashboard/dashboard_stats.dart';
+export 'src/admin/dashboard/dashboard_repository.dart';
+
 // IAM domain
 export 'src/iam/paginated_result.dart';
 export 'src/iam/tenant.dart';
