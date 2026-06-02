@@ -40,12 +40,19 @@ import '../../features/pim/attributes/attribute_list_screen.dart';
 import '../../features/pim/attributes/attribute_form_screen.dart';
 import '../../features/pim/attributes/attribute_detail_screen.dart';
 
-// Web Data BLoCs (S013-T003)
+// Web Data BLoCs + Screens (S013-T004)
 import '../../features/web_data/blocs/web_data_dashboard_bloc.dart';
 import '../../features/web_data/blocs/sources_bloc.dart';
 import '../../features/web_data/blocs/source_form_bloc.dart';
 import '../../features/web_data/blocs/jobs_bloc.dart';
 import '../../features/web_data/blocs/web_products_bloc.dart';
+import '../../features/web_data/screens/web_data_dashboard_screen.dart';
+import '../../features/web_data/screens/sources_screen.dart';
+import '../../features/web_data/screens/source_form_screen.dart';
+import '../../features/web_data/screens/jobs_screen.dart';
+import '../../features/web_data/screens/job_detail_screen.dart';
+import '../../features/web_data/screens/web_products_screen.dart';
+import '../../features/web_data/screens/web_product_detail_screen.dart';
 
 // PIM Quickstart BLoCs + Screens (S012-T005)
 import '../../features/pim/quickstart/blocs/business_types_bloc.dart';
@@ -1003,23 +1010,16 @@ class AppRouter {
             path: '/web-data/dashboard',
             name: 'webdata-dashboard',
             pageBuilder: (context, state) => NoTransitionPage(
-              child: MultiBlocProvider(
-                providers: [
-                  BlocProvider(
-                    create: (_) => WebDataDashboardBloc(
-                      getStats: GetDashboardStatsUseCase(
-                        WebDataRepositoryImpl(KongClient()),
-                      ),
-                      listJobs: ListJobsUseCase(
-                        WebDataRepositoryImpl(KongClient()),
-                      ),
-                    )..add(LoadDashboardEvent()),
+              child: BlocProvider(
+                create: (_) => WebDataDashboardBloc(
+                  getStats: GetDashboardStatsUseCase(
+                    WebDataRepositoryImpl(KongClient()),
                   ),
-                ],
-                child: const PlaceholderScreen(
-                  title: 'Web Data Dashboard',
-                  spec: 'S013',
-                ),
+                  listJobs: ListJobsUseCase(
+                    WebDataRepositoryImpl(KongClient()),
+                  ),
+                )..add(LoadDashboardEvent()),
+                child: const WebDataDashboardScreen(),
               ),
             ),
           ),
@@ -1056,9 +1056,52 @@ class AppRouter {
                     ),
                   ),
                 ],
-                child: const PlaceholderScreen(title: 'Fuentes', spec: 'S013'),
+                child: const SourcesScreen(),
               ),
             ),
+            routes: [
+              GoRoute(
+                path: 'new',
+                name: 'webdata-source-new',
+                parentNavigatorKey: _rootNavigatorKey,
+                builder: (context, state) => BlocProvider(
+                  create: (_) => SourceFormBloc(
+                    get: GetSourceUseCase(
+                      WebDataRepositoryImpl(KongClient()),
+                    ),
+                    create: CreateSourceUseCase(
+                      WebDataRepositoryImpl(KongClient()),
+                    ),
+                    update: UpdateSourceUseCase(
+                      WebDataRepositoryImpl(KongClient()),
+                    ),
+                  ),
+                  child: const SourceFormScreen(),
+                ),
+              ),
+              GoRoute(
+                path: ':id/edit',
+                name: 'webdata-source-edit',
+                parentNavigatorKey: _rootNavigatorKey,
+                builder: (context, state) {
+                  final id = state.pathParameters['id']!;
+                  return BlocProvider(
+                    create: (_) => SourceFormBloc(
+                      get: GetSourceUseCase(
+                        WebDataRepositoryImpl(KongClient()),
+                      ),
+                      create: CreateSourceUseCase(
+                        WebDataRepositoryImpl(KongClient()),
+                      ),
+                      update: UpdateSourceUseCase(
+                        WebDataRepositoryImpl(KongClient()),
+                      ),
+                    ),
+                    child: SourceFormScreen(sourceId: id),
+                  );
+                },
+              ),
+            ],
           ),
           GoRoute(
             path: '/web-data/jobs',
@@ -1076,9 +1119,42 @@ class AppRouter {
                     WebDataRepositoryImpl(KongClient()),
                   ),
                 )..add(LoadJobsEvent()),
-                child: const PlaceholderScreen(title: 'Jobs', spec: 'S013'),
+                child: const JobsScreen(),
               ),
             ),
+            routes: [
+              GoRoute(
+                path: ':id',
+                name: 'webdata-job-detail',
+                parentNavigatorKey: _rootNavigatorKey,
+                builder: (context, state) {
+                  final id = state.pathParameters['id']!;
+                  return MultiBlocProvider(
+                    providers: [
+                      BlocProvider(
+                        create: (_) => JobsBloc(
+                          list: ListJobsUseCase(
+                            WebDataRepositoryImpl(KongClient()),
+                          ),
+                          cancel: CancelJobUseCase(
+                            WebDataRepositoryImpl(KongClient()),
+                          ),
+                          retry: RetryJobUseCase(
+                            WebDataRepositoryImpl(KongClient()),
+                          ),
+                        ),
+                      ),
+                      RepositoryProvider<GetJobUseCase>(
+                        create: (_) => GetJobUseCase(
+                          WebDataRepositoryImpl(KongClient()),
+                        ),
+                      ),
+                    ],
+                    child: JobDetailScreen(jobId: id),
+                  );
+                },
+              ),
+            ],
           ),
           GoRoute(
             path: '/web-data/products',
@@ -1102,12 +1178,53 @@ class AppRouter {
                     WebDataRepositoryImpl(KongClient()),
                   ),
                 )..add(LoadWebProductsEvent()),
-                child: const PlaceholderScreen(
-                  title: 'Productos Web',
-                  spec: 'S013',
-                ),
+                child: const WebProductsScreen(),
               ),
             ),
+            routes: [
+              GoRoute(
+                path: ':id',
+                name: 'webdata-product-detail',
+                parentNavigatorKey: _rootNavigatorKey,
+                builder: (context, state) {
+                  final id = state.pathParameters['id']!;
+                  return MultiBlocProvider(
+                    providers: [
+                      BlocProvider(
+                        create: (_) => WebProductsBloc(
+                          list: ListWebProductsUseCase(
+                            WebDataRepositoryImpl(KongClient()),
+                          ),
+                          delete: DeleteWebProductUseCase(
+                            WebDataRepositoryImpl(KongClient()),
+                          ),
+                          bulkDelete: BulkDeleteWebProductsUseCase(
+                            WebDataRepositoryImpl(KongClient()),
+                          ),
+                          assign: AssignBusinessTypeUseCase(
+                            WebDataRepositoryImpl(KongClient()),
+                          ),
+                          bulkAssign: BulkAssignBusinessTypeUseCase(
+                            WebDataRepositoryImpl(KongClient()),
+                          ),
+                        ),
+                      ),
+                      RepositoryProvider<GetWebProductUseCase>(
+                        create: (_) => GetWebProductUseCase(
+                          WebDataRepositoryImpl(KongClient()),
+                        ),
+                      ),
+                      RepositoryProvider<GetPriceHistoryUseCase>(
+                        create: (_) => GetPriceHistoryUseCase(
+                          WebDataRepositoryImpl(KongClient()),
+                        ),
+                      ),
+                    ],
+                    child: WebProductDetailScreen(productId: id),
+                  );
+                },
+              ),
+            ],
           ),
 
           // --- Quickstart Dinámico (S012-T005) ---
