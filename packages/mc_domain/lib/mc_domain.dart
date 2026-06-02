@@ -46,6 +46,16 @@ export 'src/pim/quickstart/business_type_template.dart';
 export 'src/pim/quickstart/template_analytics.dart';
 export 'src/pim/quickstart/quickstart_repository.dart';
 
+// Web Data domain (S013)
+export 'src/webdata/web_source_status.dart';
+export 'src/webdata/web_source.dart';
+export 'src/webdata/web_job_status.dart';
+export 'src/webdata/web_job.dart';
+export 'src/webdata/price_point.dart';
+export 'src/webdata/web_product.dart';
+export 'src/webdata/web_data_dashboard_stats.dart';
+export 'src/webdata/web_data_repository.dart';
+
 // IAM domain
 export 'src/iam/paginated_result.dart';
 export 'src/iam/tenant.dart';
