@@ -3,6 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:mc_domain/mc_domain.dart';
 
+import '../../../core/utils/color_utils.dart';
 import '../../../shared/widgets/admin_crud_form.dart';
 import '../../../shared/widgets/admin_snackbars.dart';
 import 'blocs/brand_form_bloc.dart';
@@ -36,6 +37,10 @@ class _BrandFormScreenState extends State<BrandFormScreen> {
   void initState() {
     super.initState();
     _nameFocusNode.addListener(_onNameFocusChange);
+    // Refresca el preview en vivo a medida que se editan estos campos.
+    _nameController.addListener(_onPreviewChanged);
+    _backgroundColorController.addListener(_onPreviewChanged);
+    _textColorController.addListener(_onPreviewChanged);
     final brand = widget.initialBrand;
     if (brand != null) {
       _nameController.text = brand.name;
@@ -46,6 +51,10 @@ class _BrandFormScreenState extends State<BrandFormScreen> {
       _textColorController.text = brand.textColor ?? '';
       _typographyController.text = brand.typography ?? '';
     }
+  }
+
+  void _onPreviewChanged() {
+    if (mounted) setState(() {});
   }
 
   void _onNameFocusChange() {
@@ -63,6 +72,9 @@ class _BrandFormScreenState extends State<BrandFormScreen> {
   void dispose() {
     _nameFocusNode.removeListener(_onNameFocusChange);
     _nameFocusNode.dispose();
+    _nameController.removeListener(_onPreviewChanged);
+    _backgroundColorController.removeListener(_onPreviewChanged);
+    _textColorController.removeListener(_onPreviewChanged);
     _nameController.dispose();
     _descriptionController.dispose();
     _logoUrlController.dispose();
@@ -191,6 +203,8 @@ class _BrandFormScreenState extends State<BrandFormScreen> {
                 ],
               ),
               const SizedBox(height: 16),
+              _buildColorPreview(),
+              const SizedBox(height: 16),
               _buildTextField(
                 controller: _typographyController,
                 label: 'Tipografia',
@@ -201,6 +215,45 @@ class _BrandFormScreenState extends State<BrandFormScreen> {
           );
         },
       ),
+    );
+  }
+
+  Widget _buildColorPreview() {
+    final bg = parseHexColor(_backgroundColorController.text);
+    final fg = parseHexColor(_textColorController.text);
+    final name = _nameController.text.trim();
+    final displayName = name.isEmpty ? 'Nombre de la marca' : name;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Vista previa',
+          style: Theme.of(context)
+              .textTheme
+              .labelMedium
+              ?.copyWith(color: Colors.grey[600]),
+        ),
+        const SizedBox(height: 8),
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          decoration: BoxDecoration(
+            color: bg ?? Colors.grey[100],
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: Colors.grey.shade300),
+          ),
+          child: Text(
+            displayName,
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w600,
+              fontStyle: name.isEmpty ? FontStyle.italic : FontStyle.normal,
+              color: fg ?? Colors.grey[500],
+            ),
+          ),
+        ),
+      ],
     );
   }
 

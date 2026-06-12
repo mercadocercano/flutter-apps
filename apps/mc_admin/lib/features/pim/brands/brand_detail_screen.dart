@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:mc_application/mc_application.dart';
 import 'package:mc_domain/mc_domain.dart';
 
+import '../../../core/utils/color_utils.dart';
 import '../../../shared/widgets/admin_snackbars.dart';
 import '../../../shared/widgets/confirm_dialog.dart';
 import '../../../shared/widgets/status_badge.dart';
@@ -190,10 +191,15 @@ class _BrandDetailView extends StatelessWidget {
                 _InfoCard(
                   title: 'Visual',
                   children: [
+                    if (brand.backgroundColor != null ||
+                        brand.textColor != null) ...[
+                      _BrandPreviewRow(brand: brand),
+                      const Divider(height: 16),
+                    ],
                     if (brand.backgroundColor != null)
-                      _InfoRow('Color de fondo', brand.backgroundColor!),
+                      _ColorRow('Color de fondo', brand.backgroundColor!),
                     if (brand.textColor != null)
-                      _InfoRow('Color de texto', brand.textColor!),
+                      _ColorRow('Color de texto', brand.textColor!),
                     if (brand.typography != null)
                       _InfoRow('Tipografia', brand.typography!),
                   ],
@@ -369,6 +375,105 @@ class _InfoCard extends StatelessWidget {
             ...children,
           ],
         ),
+      ),
+    );
+  }
+}
+
+/// Vista previa del nombre de la marca usando sus colores configurados.
+class _BrandPreviewRow extends StatelessWidget {
+  final MarketplaceBrand brand;
+  const _BrandPreviewRow({required this.brand});
+
+  @override
+  Widget build(BuildContext context) {
+    final bg = parseHexColor(brand.backgroundColor);
+    final fg = parseHexColor(brand.textColor);
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 6),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: 160,
+            child: Text(
+              'Vista previa',
+              style: TextStyle(color: Colors.grey[600], fontSize: 13),
+            ),
+          ),
+          Expanded(
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              decoration: BoxDecoration(
+                color: bg ?? Colors.transparent,
+                borderRadius: BorderRadius.circular(8),
+                border: bg == null
+                    ? Border.all(color: Colors.grey.shade300)
+                    : null,
+              ),
+              child: Text(
+                brand.name,
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                  color: fg ?? Colors.black87,
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Fila de color con swatch + valor hexadecimal seleccionable.
+class _ColorRow extends StatelessWidget {
+  final String label;
+  final String hex;
+  const _ColorRow(this.label, this.hex);
+
+  @override
+  Widget build(BuildContext context) {
+    final color = parseHexColor(hex);
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 6),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: 160,
+            child: Text(
+              label,
+              style: TextStyle(color: Colors.grey[600], fontSize: 13),
+            ),
+          ),
+          Expanded(
+            child: Row(
+              children: [
+                Container(
+                  width: 20,
+                  height: 20,
+                  decoration: BoxDecoration(
+                    color: color ?? Colors.transparent,
+                    borderRadius: BorderRadius.circular(4),
+                    border: Border.all(color: Colors.grey.shade300),
+                  ),
+                  child: color == null
+                      ? Icon(Icons.help_outline,
+                          size: 14, color: Colors.grey[500])
+                      : null,
+                ),
+                const SizedBox(width: 8),
+                SelectableText(
+                  hex,
+                  style: const TextStyle(
+                      fontSize: 13, fontWeight: FontWeight.w500),
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }

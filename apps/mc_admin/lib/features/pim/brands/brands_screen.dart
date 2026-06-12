@@ -3,6 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:mc_domain/mc_domain.dart';
 
+import '../../../core/utils/color_utils.dart';
 import '../../../shared/widgets/admin_data_table.dart';
 import '../../../shared/widgets/admin_snackbars.dart';
 import '../../../shared/widgets/confirm_dialog.dart';
@@ -86,23 +87,7 @@ class _BrandsScreenState extends State<BrandsScreen> {
                     ),
                     AdminColumn<MarketplaceBrand>(
                       label: 'Nombre',
-                      builder: (item) => Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Text(
-                            item.name,
-                            style: const TextStyle(fontWeight: FontWeight.w600),
-                          ),
-                          Text(
-                            item.slug,
-                            style: Theme.of(context)
-                                .textTheme
-                                .bodySmall
-                                ?.copyWith(color: Colors.grey[600]),
-                          ),
-                        ],
-                      ),
+                      builder: (item) => _BrandName(brand: item),
                     ),
                     AdminColumn<MarketplaceBrand>(
                       label: 'Verificacion',
@@ -182,6 +167,59 @@ class _FilterChips extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+/// Renderiza el nombre de la marca usando sus colores configurados
+/// (background_color / text_color). Si no hay colores, cae a texto plano.
+class _BrandName extends StatelessWidget {
+  final MarketplaceBrand brand;
+  const _BrandName({required this.brand});
+
+  @override
+  Widget build(BuildContext context) {
+    final bg = parseHexColor(brand.backgroundColor);
+    final fg = parseHexColor(brand.textColor);
+    final hasColors = bg != null || fg != null;
+
+    final nameWidget = hasColors
+        ? Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+            decoration: BoxDecoration(
+              color: bg ?? Colors.transparent,
+              borderRadius: BorderRadius.circular(6),
+              border: bg == null
+                  ? Border.all(color: Colors.grey.shade300)
+                  : null,
+            ),
+            child: Text(
+              brand.name,
+              style: TextStyle(
+                fontWeight: FontWeight.w600,
+                color: fg ?? Colors.black87,
+              ),
+            ),
+          )
+        : Text(
+            brand.name,
+            style: const TextStyle(fontWeight: FontWeight.w600),
+          );
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        nameWidget,
+        const SizedBox(height: 2),
+        Text(
+          brand.slug,
+          style: Theme.of(context)
+              .textTheme
+              .bodySmall
+              ?.copyWith(color: Colors.grey[600]),
+        ),
+      ],
     );
   }
 }
