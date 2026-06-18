@@ -105,6 +105,11 @@ class _GlobalCatalogScreenState extends State<GlobalCatalogScreen> {
                   onCreateTap: () => context.push('/pim/global-catalog/new'),
                   columns: [
                     AdminColumn(
+                      label: '',
+                      width: 56,
+                      builder: (item) => _Thumbnail(url: item.imageUrl),
+                    ),
+                    AdminColumn(
                       label: 'Nombre',
                       builder: (item) => _NameCell(
                         name: item.name,
@@ -232,6 +237,57 @@ class _FilterBar extends StatelessWidget {
             label: const Text('Importar'),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _Thumbnail extends StatelessWidget {
+  final String? url;
+
+  const _Thumbnail({required this.url});
+
+  @override
+  Widget build(BuildContext context) {
+    const double size = 40;
+    final placeholder = Container(
+      width: size,
+      height: size,
+      decoration: BoxDecoration(
+        color: Colors.grey[200],
+        borderRadius: BorderRadius.circular(6),
+      ),
+      child: Icon(
+        Icons.image_not_supported_outlined,
+        size: 20,
+        color: Colors.grey[400],
+      ),
+    );
+
+    if (url == null || !url!.startsWith('http')) return placeholder;
+
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(6),
+      child: Image.network(
+        url!,
+        width: size,
+        height: size,
+        fit: BoxFit.cover,
+        errorBuilder: (_, __, ___) => placeholder,
+        loadingBuilder: (context, child, progress) {
+          if (progress == null) return child;
+          return SizedBox(
+            width: size,
+            height: size,
+            child: const Center(
+              child: SizedBox(
+                width: 16,
+                height: 16,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              ),
+            ),
+          );
+        },
       ),
     );
   }

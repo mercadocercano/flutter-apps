@@ -19,7 +19,7 @@ class WebDataRepositoryImpl implements WebDataRepository {
 
   @override
   Future<WebDataDashboardStats> getDashboardStats() async {
-    final response = await _client.get<Map<String, dynamic>>('$_base/dashboard');
+    final response = await _client.get<Map<String, dynamic>>('$_base/stats');
     return dashboardStatsFromJson(_requireData(response));
   }
 

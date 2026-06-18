@@ -41,25 +41,32 @@ String tenantTypeToString(TenantType type) {
 }
 
 Tenant tenantFromJson(Map<String, dynamic> json) {
+  // List endpoint returns PascalCase (Go struct without json tags).
+  // Support both PascalCase and snake_case for every field.
+  final status = tenantStatusFromString(
+    ((json['status'] ?? json['Status']) as String?),
+  );
   return Tenant(
-    id: json['id'] as String,
-    name: json['name'] as String,
-    slug: json['slug'] as String,
-    description: json['description'] as String?,
-    type: tenantTypeFromString(json['type'] as String?),
-    status: tenantStatusFromString(json['status'] as String?),
-    ownerId: json['owner_id'] as String,
-    domain: json['domain'] as String?,
-    planId: json['plan_id'] as String?,
-    userCount: (json['user_count'] as num?)?.toInt() ?? 0,
-    maxUsers: (json['max_users'] as num?)?.toInt() ?? 0,
-    settings: (json['settings'] as Map<String, dynamic>?) ?? {},
-    expiresAt: json['expires_at'] != null
-        ? DateTime.tryParse(json['expires_at'] as String)
-        : null,
-    createdAt: DateTime.parse(json['created_at'] as String),
-    updatedAt: DateTime.parse(json['updated_at'] as String),
-    isActive: (json['is_active'] as bool?) ?? false,
+    id: ((json['id'] ?? json['ID']) as String),
+    name: ((json['name'] ?? json['Name']) as String),
+    slug: ((json['slug'] ?? json['Slug']) as String),
+    description: (json['description'] ?? json['Description']) as String?,
+    type: tenantTypeFromString(
+      ((json['type'] ?? json['Type']) as String?),
+    ),
+    status: status,
+    ownerId: ((json['owner_id'] ?? json['OwnerID']) as String),
+    domain: (json['domain'] ?? json['Domain']) as String?,
+    planId: (json['plan_id'] ?? json['PlanID']) as String?,
+    userCount: ((json['user_count'] ?? json['UserCount']) as num?)?.toInt() ?? 0,
+    maxUsers: ((json['max_users'] ?? json['MaxUsers']) as num?)?.toInt() ?? 0,
+    settings: (json['settings'] ?? json['Settings']) is Map<String, dynamic>
+        ? (json['settings'] ?? json['Settings']) as Map<String, dynamic>
+        : {},
+    expiresAt: _parseDateOrNull(json['expires_at'] ?? json['ExpiresAt']),
+    createdAt: _parseDate(json['created_at'] ?? json['CreatedAt']),
+    updatedAt: _parseDate(json['updated_at'] ?? json['UpdatedAt']),
+    isActive: (json['is_active'] as bool?) ?? (status == TenantStatus.active),
   );
 }
 
@@ -84,6 +91,8 @@ RoleType roleTypeFromString(String? value) {
   return switch (value?.toUpperCase()) {
     'SYSTEM' => RoleType.system,
     'TENANT' => RoleType.tenant,
+    // Backend may return 'CUSTOM' for non-system roles created per-tenant
+    'CUSTOM' => RoleType.tenant,
     _ => RoleType.system,
   };
 }
@@ -96,21 +105,35 @@ String roleTypeToString(RoleType type) {
 }
 
 Role roleFromJson(Map<String, dynamic> json) {
-  final rawPerms = json['permissions'];
+  // List endpoint returns PascalCase (Go struct without json tags),
+  // detail endpoint returns snake_case. Support both.
+  final rawPerms = json['permissions'] ?? json['Permissions'];
   final permissions = rawPerms is List
       ? rawPerms.cast<String>()
       : <String>[];
 
+  // List uses IsActive (bool), detail uses status string.
+  // Map IsActive → RoleStatus; fall back to 'status' field.
+  final RoleStatus status;
+  final isActiveBool = json['IsActive'];
+  if (isActiveBool is bool) {
+    status = isActiveBool ? RoleStatus.active : RoleStatus.inactive;
+  } else {
+    status = roleStatusFromString(json['status'] as String?);
+  }
+
   return Role(
-    id: json['id'] as String,
-    name: json['name'] as String,
-    description: json['description'] as String?,
-    type: roleTypeFromString(json['type'] as String?),
-    tenantId: json['tenant_id'] as String?,
+    id: (json['id'] ?? json['ID']) as String,
+    name: (json['name'] ?? json['Name']) as String,
+    description: (json['description'] ?? json['Description']) as String?,
+    type: roleTypeFromString(
+      ((json['type'] ?? json['Type']) as String?),
+    ),
+    tenantId: (json['tenant_id'] ?? json['TenantID']) as String?,
     permissions: permissions,
-    status: roleStatusFromString(json['status'] as String?),
-    createdAt: DateTime.parse(json['created_at'] as String),
-    updatedAt: DateTime.parse(json['updated_at'] as String),
+    status: status,
+    createdAt: _parseDate(json['created_at'] ?? json['CreatedAt']),
+    updatedAt: _parseDate(json['updated_at'] ?? json['UpdatedAt']),
   );
 }
 
@@ -151,23 +174,34 @@ String planTypeToString(PlanType type) {
 }
 
 Plan planFromJson(Map<String, dynamic> json) {
-  final rawFeatures = json['features'];
+  // List endpoint returns PascalCase (Go struct without json tags),
+  // detail endpoint returns snake_case. Support both.
+  // Backend has price_month/PriceMonth and price_year/PriceYear, no single 'price' or 'currency' or 'limits'.
+  final rawFeatures = json['features'] ?? json['Features'];
   final features = rawFeatures is List
       ? rawFeatures.cast<String>()
       : <String>[];
 
+  // Use price_month as the canonical price field; fallback chain covers both cases.
+  final rawPrice = json['price_month'] ?? json['PriceMonth'] ?? json['price'];
+  final price = (rawPrice as num?)?.toDouble() ?? 0.0;
+
   return Plan(
-    id: json['id'] as String,
-    name: json['name'] as String,
-    description: json['description'] as String?,
-    type: planTypeFromString(json['type'] as String?),
-    price: (json['price'] as num?)?.toDouble() ?? 0.0,
+    id: ((json['id'] ?? json['ID']) as String),
+    name: ((json['name'] ?? json['Name']) as String),
+    description: (json['description'] ?? json['Description']) as String?,
+    type: planTypeFromString(
+      ((json['type'] ?? json['Type']) as String?),
+    ),
+    price: price,
     currency: (json['currency'] as String?) ?? 'ARS',
     features: features,
     limits: (json['limits'] as Map<String, dynamic>?) ?? {},
-    status: planStatusFromString(json['status'] as String?),
-    createdAt: DateTime.parse(json['created_at'] as String),
-    updatedAt: DateTime.parse(json['updated_at'] as String),
+    status: planStatusFromString(
+      ((json['status'] ?? json['Status']) as String?),
+    ),
+    createdAt: _parseDate(json['created_at'] ?? json['CreatedAt']),
+    updatedAt: _parseDate(json['updated_at'] ?? json['UpdatedAt']),
   );
 }
 
@@ -184,3 +218,11 @@ PaginatedResult<T> paginatedFromJson<T>(
     totalPages: (json['total_pages'] as num?)?.toInt() ?? 1,
   );
 }
+
+// Parseo de fechas tolerante: si el backend omite o manda null el timestamp,
+// no se rompe la lista entera (cae a now() en vez de lanzar TypeError).
+DateTime _parseDate(dynamic v) =>
+    v is String ? (DateTime.tryParse(v) ?? DateTime.now()) : DateTime.now();
+
+DateTime? _parseDateOrNull(dynamic v) =>
+    v is String ? DateTime.tryParse(v) : null;

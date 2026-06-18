@@ -6,18 +6,42 @@ import 'package:mc_domain/mc_domain.dart';
 // WebDataDashboardStats
 // ---------------------------------------------------------------------------
 
-/// Formato esperado:
-/// {"active_sources":N,"inactive_sources":N,"jobs_today":N,
-///  "total_products":N,"success_rate":0.87}
+/// Formato real del backend:
+/// {"data":{"total_sources":N,"active_sources":N,"total_jobs":N,
+///           "pending_jobs":N,"running_jobs":N,"completed_jobs":N,
+///           "failed_jobs":N,"total_products":N}}
+/// No devuelve "inactive_sources", "jobs_today" ni "success_rate" directamente.
 WebDataDashboardStats dashboardStatsFromJson(Map<String, dynamic> json) {
-  final data = json['stats'] as Map<String, dynamic>? ?? json;
+  // Backend wraps stats in "data"; old code expected "stats" or flat — tolerate all.
+  final data = json['data'] as Map<String, dynamic>?
+      ?? json['stats'] as Map<String, dynamic>?
+      ?? json;
+
+  final activeSources = (data['active_sources'] as num?)?.toInt() ?? 0;
+  final totalSources = (data['total_sources'] as num?)?.toInt() ?? 0;
+  // "inactive_sources" no existe — se deriva de total - active.
+  final inactiveSources = totalSources - activeSources;
+
+  final completedJobs = (data['completed_jobs'] as num?)?.toInt() ?? 0;
+  final failedJobs = (data['failed_jobs'] as num?)?.toInt() ?? 0;
+  final totalJobs = (data['total_jobs'] as num?)?.toInt() ?? 0;
+  // "jobs_today" no existe — se usa total_jobs como aproximación.
+  final jobsToday = (data['jobs_today'] as num?)?.toInt() ?? totalJobs;
+  // "success_rate" no existe — se calcula de completed/(completed+failed).
+  final double successRate;
+  if (data.containsKey('success_rate')) {
+    successRate = (data['success_rate'] as num?)?.toDouble() ?? 0.0;
+  } else {
+    final denominator = completedJobs + failedJobs;
+    successRate = denominator > 0 ? completedJobs / denominator : 0.0;
+  }
 
   return WebDataDashboardStats(
-    activeSources: (data['active_sources'] as num?)?.toInt() ?? 0,
-    inactiveSources: (data['inactive_sources'] as num?)?.toInt() ?? 0,
-    jobsToday: (data['jobs_today'] as num?)?.toInt() ?? 0,
+    activeSources: activeSources,
+    inactiveSources: inactiveSources.clamp(0, double.maxFinite.toInt()),
+    jobsToday: jobsToday,
     totalProducts: (data['total_products'] as num?)?.toInt() ?? 0,
-    successRate: (data['success_rate'] as num?)?.toDouble() ?? 0.0,
+    successRate: successRate,
   );
 }
 
@@ -25,20 +49,26 @@ WebDataDashboardStats dashboardStatsFromJson(Map<String, dynamic> json) {
 // WebSource
 // ---------------------------------------------------------------------------
 
-/// Formato esperado:
-/// {"sources":[...],"pagination":{...}}
+/// Formato real del backend:
+/// {"data":[...],"meta":{"page":N,"page_size":N,"total":N,"total_pages":N}}
+/// (antes se esperaba {"sources":[...],"pagination":{...}})
 PaginatedResult<WebSource> paginatedSourcesFromJson(
   Map<String, dynamic> json,
 ) {
-  final rawItems = (json['sources'] as List?) ?? [];
-  final pagination = json['pagination'] as Map<String, dynamic>? ?? {};
+  // Backend wraps list in "data"; old code expected "sources" — tolerate both.
+  final rawItems = (json['data'] as List?) ?? (json['sources'] as List?) ?? [];
+
+  // Backend uses "meta" sub-object; old code expected "pagination".
+  final meta = json['meta'] as Map<String, dynamic>?
+      ?? json['pagination'] as Map<String, dynamic>?
+      ?? {};
 
   return PaginatedResult<WebSource>(
     items: rawItems.cast<Map<String, dynamic>>().map(webSourceFromJson).toList(),
-    totalCount: (pagination['total'] as num?)?.toInt() ?? 0,
-    page: (pagination['page'] as num?)?.toInt() ?? 1,
-    pageSize: (pagination['page_size'] as num?)?.toInt() ?? 20,
-    totalPages: (pagination['total_pages'] as num?)?.toInt() ?? 1,
+    totalCount: (meta['total'] as num?)?.toInt() ?? 0,
+    page: (meta['page'] as num?)?.toInt() ?? 1,
+    pageSize: (meta['page_size'] as num?)?.toInt() ?? 20,
+    totalPages: (meta['total_pages'] as num?)?.toInt() ?? 1,
   );
 }
 
@@ -77,18 +107,24 @@ WebSourceStatus _parseSourceStatus(String raw) {
 // WebJob
 // ---------------------------------------------------------------------------
 
-/// Formato esperado:
-/// {"jobs":[...],"pagination":{...}}
+/// Formato real del backend:
+/// {"data":[...],"meta":{"page":N,"page_size":N,"total":N,"total_pages":N}}
+/// (antes se esperaba {"jobs":[...],"pagination":{...}})
 PaginatedResult<WebJob> paginatedJobsFromJson(Map<String, dynamic> json) {
-  final rawItems = (json['jobs'] as List?) ?? [];
-  final pagination = json['pagination'] as Map<String, dynamic>? ?? {};
+  // Backend wraps list in "data"; old code expected "jobs" — tolerate both.
+  final rawItems = (json['data'] as List?) ?? (json['jobs'] as List?) ?? [];
+
+  // Backend uses "meta" sub-object; old code expected "pagination".
+  final meta = json['meta'] as Map<String, dynamic>?
+      ?? json['pagination'] as Map<String, dynamic>?
+      ?? {};
 
   return PaginatedResult<WebJob>(
     items: rawItems.cast<Map<String, dynamic>>().map(webJobFromJson).toList(),
-    totalCount: (pagination['total'] as num?)?.toInt() ?? 0,
-    page: (pagination['page'] as num?)?.toInt() ?? 1,
-    pageSize: (pagination['page_size'] as num?)?.toInt() ?? 20,
-    totalPages: (pagination['total_pages'] as num?)?.toInt() ?? 1,
+    totalCount: (meta['total'] as num?)?.toInt() ?? 0,
+    page: (meta['page'] as num?)?.toInt() ?? 1,
+    pageSize: (meta['page_size'] as num?)?.toInt() ?? 20,
+    totalPages: (meta['total_pages'] as num?)?.toInt() ?? 1,
   );
 }
 
@@ -120,21 +156,27 @@ WebJobStatus _parseJobStatus(String raw) {
 // WebProduct
 // ---------------------------------------------------------------------------
 
-/// Formato esperado:
-/// {"products":[...],"pagination":{...}}
+/// Formato real del backend:
+/// {"data":[...],"meta":{"page":N,"page_size":N,"total":N,"total_pages":N}}
+/// (antes se esperaba {"products":[...],"pagination":{...}})
 PaginatedResult<WebProduct> paginatedProductsFromJson(
   Map<String, dynamic> json,
 ) {
-  final rawItems = (json['products'] as List?) ?? [];
-  final pagination = json['pagination'] as Map<String, dynamic>? ?? {};
+  // Backend wraps list in "data"; old code expected "products" — tolerate both.
+  final rawItems = (json['data'] as List?) ?? (json['products'] as List?) ?? [];
+
+  // Backend uses "meta" sub-object; old code expected "pagination".
+  final meta = json['meta'] as Map<String, dynamic>?
+      ?? json['pagination'] as Map<String, dynamic>?
+      ?? {};
 
   return PaginatedResult<WebProduct>(
     items:
         rawItems.cast<Map<String, dynamic>>().map(webProductFromJson).toList(),
-    totalCount: (pagination['total'] as num?)?.toInt() ?? 0,
-    page: (pagination['page'] as num?)?.toInt() ?? 1,
-    pageSize: (pagination['page_size'] as num?)?.toInt() ?? 20,
-    totalPages: (pagination['total_pages'] as num?)?.toInt() ?? 1,
+    totalCount: (meta['total'] as num?)?.toInt() ?? 0,
+    page: (meta['page'] as num?)?.toInt() ?? 1,
+    pageSize: (meta['page_size'] as num?)?.toInt() ?? 20,
+    totalPages: (meta['total_pages'] as num?)?.toInt() ?? 1,
   );
 }
 

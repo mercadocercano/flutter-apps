@@ -7,18 +7,20 @@ import 'package:mc_domain/mc_domain.dart';
 // ---------------------------------------------------------------------------
 
 /// Parsea lista paginada de business types.
-/// Formato esperado:
-/// {"business_types":[...],"pagination":{"page":N,"page_size":N,"total":N,"total_pages":N}}
+/// Formato real del backend:
+/// {"items":[...],"total_count":N,"page":N,"page_size":N,"total_pages":N}
+/// (paginación flat, sin sub-objeto "pagination")
 PaginatedResult<BusinessType> paginatedBusinessTypesFromJson(
   Map<String, dynamic> json,
 ) {
-  final rawItems = (json['business_types'] as List?) ?? [];
-  final pagination = json['pagination'] as Map<String, dynamic>? ?? {};
+  final rawItems = (json['items'] as List?) ?? (json['business_types'] as List?) ?? [];
 
-  final total = (pagination['total'] as num?)?.toInt() ?? 0;
-  final page = (pagination['page'] as num?)?.toInt() ?? 1;
-  final pageSize = (pagination['page_size'] as num?)?.toInt() ?? 20;
-  final totalPages = (pagination['total_pages'] as num?)?.toInt() ?? 1;
+  // Backend uses flat pagination; fall back to "pagination" sub-object for compatibility.
+  final pagination = json['pagination'] as Map<String, dynamic>? ?? {};
+  final total = ((json['total_count'] ?? pagination['total']) as num?)?.toInt() ?? 0;
+  final page = ((json['page'] ?? pagination['page']) as num?)?.toInt() ?? 1;
+  final pageSize = ((json['page_size'] ?? pagination['page_size']) as num?)?.toInt() ?? 20;
+  final totalPages = ((json['total_pages'] ?? pagination['total_pages']) as num?)?.toInt() ?? 1;
 
   return PaginatedResult<BusinessType>(
     items: rawItems
@@ -33,11 +35,13 @@ PaginatedResult<BusinessType> paginatedBusinessTypesFromJson(
 }
 
 /// Parsea un BusinessType desde JSON.
+/// El backend devuelve "code" en lugar de "slug"; ambos son manejados.
 BusinessType businessTypeFromJson(Map<String, dynamic> json) {
   return BusinessType(
     id: json['id'] as String,
     name: json['name'] as String,
-    slug: json['slug'] as String,
+    // Backend uses "code" as the identifier slug; fall back to "slug" legacy.
+    slug: ((json['slug'] ?? json['code']) as String?) ?? '',
     description: json['description'] as String?,
     icon: (json['icon'] as String?) ?? '',
     isActive: (json['is_active'] as bool?) ?? true,
@@ -63,9 +67,11 @@ Map<String, dynamic> businessTypeToJson(BusinessType bt) {
 // ---------------------------------------------------------------------------
 
 /// Parsea una lista simple de templates.
-/// Formato esperado: {"templates":[...]}
+/// Formato real del backend: {"items":[...],"total_count":N,...}
+/// (el formato anterior esperaba {"templates":[...]})
 List<BusinessTypeTemplate> templatesFromJson(Map<String, dynamic> json) {
-  final rawItems = (json['templates'] as List?) ?? [];
+  // Backend returns "items"; old code expected "templates" — tolerate both.
+  final rawItems = (json['items'] as List?) ?? (json['templates'] as List?) ?? [];
   return rawItems
       .cast<Map<String, dynamic>>()
       .map(templateFromJson)
@@ -73,17 +79,44 @@ List<BusinessTypeTemplate> templatesFromJson(Map<String, dynamic> json) {
 }
 
 /// Parsea un BusinessTypeTemplate desde JSON.
+/// El backend devuelve "categories" (lista de objetos {id,name,slug,level})
+/// y "products" (lista de objetos {name,category_id,sku,price}) en lugar de
+/// "category_ids" y "base_product_ids" como listas de strings.
 BusinessTypeTemplate templateFromJson(Map<String, dynamic> json) {
-  final rawCategoryIds = (json['category_ids'] as List?) ?? [];
-  final rawProductIds = (json['base_product_ids'] as List?) ?? [];
+  // category_ids: backend devuelve "categories" como lista de objetos.
+  // Extraemos el "id" de cada objeto; los que tienen id vacío se descartan.
+  List<String> categoryIds;
+  final rawCategoryIds = json['category_ids'] as List?;
+  if (rawCategoryIds != null) {
+    categoryIds = rawCategoryIds.cast<String>();
+  } else {
+    final rawCategories = (json['categories'] as List?) ?? [];
+    categoryIds = rawCategories
+        .cast<Map<String, dynamic>>()
+        .map((c) => c['id'] as String? ?? '')
+        .where((id) => id.isNotEmpty)
+        .toList();
+  }
+
+  // base_product_ids: backend devuelve "products" como lista de objetos.
+  // No tienen IDs reales — los productos son sugerencias de nombre, no refs a UUIDs.
+  List<String> baseProductIds;
+  final rawProductIds = json['base_product_ids'] as List?;
+  if (rawProductIds != null) {
+    baseProductIds = rawProductIds.cast<String>();
+  } else {
+    // Products en el template son sugerencias sin ID; devolvemos lista vacía
+    // para no romper el contrato del dominio.
+    baseProductIds = const [];
+  }
 
   return BusinessTypeTemplate(
     id: json['id'] as String,
     businessTypeId: json['business_type_id'] as String,
     name: json['name'] as String,
     description: json['description'] as String?,
-    categoryIds: rawCategoryIds.cast<String>(),
-    baseProductIds: rawProductIds.cast<String>(),
+    categoryIds: categoryIds,
+    baseProductIds: baseProductIds,
     isDuplicate: (json['is_duplicate'] as bool?) ?? false,
     createdAt: _parseDate(json['created_at']),
     updatedAt: _parseDate(json['updated_at']),
