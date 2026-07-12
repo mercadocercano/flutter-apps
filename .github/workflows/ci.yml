@@ -242,7 +242,8 @@ jobs:
         run: |
           cd $HOME/Projects
           make infra
-          make mc
+          # MC-E34 solo necestra IAM + PIM + Catalog-BFF; evitar build de todo el stack.
+          docker compose -f active/mercado-cercano/docker-compose.yml up -d --build postgres-setup iam-service pim-service catalog-bff-service
           # Wait for Kong + PIM + IAM health
           for i in $(seq 1 60); do
             if curl -fsS http://localhost:8000/admin/api/v1/global-catalog/health 2>/dev/null; then
