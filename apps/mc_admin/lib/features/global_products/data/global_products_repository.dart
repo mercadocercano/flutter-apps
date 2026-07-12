@@ -1,4 +1,5 @@
 import '../../../core/api/kong_client.dart';
+import '../domain/models/bulk_verify_result_model.dart';
 import '../domain/models/enrichment_result_model.dart';
 import '../domain/models/global_product_model.dart';
 import 'global_products_api.dart';
@@ -13,6 +14,9 @@ class GlobalProductsRepository {
     String? businessType,
     bool? isVerified,
     bool? hasImage,
+    int? minQuality,
+    int? maxQuality,
+    bool? massVerifiedOnly,
     int page = 1,
     int pageSize = 50,
   }) async {
@@ -21,6 +25,9 @@ class GlobalProductsRepository {
       businessType: businessType,
       isVerified: isVerified,
       hasImage: hasImage,
+      minQuality: minQuality,
+      maxQuality: maxQuality,
+      massVerifiedOnly: massVerifiedOnly,
       page: page,
       pageSize: pageSize,
     );
@@ -38,6 +45,11 @@ class GlobalProductsRepository {
   Future<void> rejectProductImage(String id) => _api.rejectImage(id);
 
   Future<List<String>> getBusinessTypes() => _api.getBusinessTypes();
+
+  Future<BulkVerifyResult> bulkVerify({
+    required List<String> ids,
+    required bool verify,
+  }) => _api.bulkVerify(ids: ids, verify: verify);
 
   Future<EnrichmentResult> runEnrichment({
     required List<String> productIds,

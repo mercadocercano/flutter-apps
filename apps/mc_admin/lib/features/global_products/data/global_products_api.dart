@@ -1,4 +1,5 @@
 import '../../../core/api/kong_client.dart';
+import '../domain/models/bulk_verify_result_model.dart';
 import '../domain/models/enrichment_result_model.dart';
 
 class GlobalProductsApi {
@@ -11,6 +12,9 @@ class GlobalProductsApi {
     String? businessType,
     bool? isVerified,
     bool? hasImage,
+    int? minQuality,
+    int? maxQuality,
+    bool? massVerifiedOnly,
     int page = 1,
     int pageSize = 50,
   }) async {
@@ -24,9 +28,13 @@ class GlobalProductsApi {
     }
     if (isVerified != null) params['is_verified'] = isVerified;
     if (hasImage == true) params['has_image'] = true;
+    if (hasImage == false) params['has_image'] = false;
+    if (minQuality != null) params['min_quality'] = minQuality;
+    if (maxQuality != null) params['max_quality'] = maxQuality;
+    if (massVerifiedOnly == true) params['mass_verified_only'] = true;
 
     final response = await _kong.get<Map<String, dynamic>>(
-      '/pim/api/v1/global-catalog/products',
+      '/admin/api/v1/global-catalog/products',
       queryParameters: params,
     );
 
@@ -54,6 +62,22 @@ class GlobalProductsApi {
     final data = response.data ?? {};
     final raw = data['business_types'] as List? ?? [];
     return raw.cast<String>();
+  }
+
+  /// Verifica o desverifica una lista de productos globales en lote.
+  /// Requiere `X-Operator-Id` (lo inyecta KongClient desde el JWT).
+  Future<BulkVerifyResult> bulkVerify({
+    required List<String> ids,
+    required bool verify,
+  }) async {
+    final response = await _kong.post<Map<String, dynamic>>(
+      '/admin/api/v1/global-catalog/products/bulk-verify',
+      data: {
+        'ids': ids,
+        'verify': verify,
+      },
+    );
+    return BulkVerifyResult.fromJson(response.data ?? {});
   }
 
   /// Rechaza la imagen actual del producto y solicita re-enriquecimiento

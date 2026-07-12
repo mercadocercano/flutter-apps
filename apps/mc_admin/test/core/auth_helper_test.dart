@@ -110,6 +110,17 @@ void main() {
       });
     });
 
+    group('getUserId', () {
+      test('extrae sub del JWT válido', () async {
+        await AuthHelper.setTokens(accessToken: validJwt);
+        expect(AuthHelper.getUserId(), equals('u1'));
+      });
+
+      test('retorna null cuando no hay JWT', () {
+        expect(AuthHelper.getUserId(), isNull);
+      });
+    });
+
     group('isAuthenticated', () {
       test('retorna false cuando no hay JWT', () {
         expect(AuthHelper.isAuthenticated(), isFalse);

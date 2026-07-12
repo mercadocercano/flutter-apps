@@ -21,7 +21,11 @@ class KongClient {
   Dio _buildDio() {
     final dio = Dio(BaseOptions(
       baseUrl: kKongBaseUrl,
-      connectTimeout: const Duration(seconds: 10),
+      // 20s (no 10s) para tolerar el cold-start del backend: si un servicio
+      // estuvo idle, la 1ª request puede tardar varios segundos (pim cold ~6.7s
+      // observado) y con 10s se tiraba `DioException [connection timeout]` en
+      // pantallas como Quickstart → Templates. Warm responde en ~0.5s.
+      connectTimeout: const Duration(seconds: 20),
       receiveTimeout: const Duration(seconds: 30),
       headers: {'Content-Type': 'application/json'},
     ));
@@ -40,9 +44,16 @@ class KongClient {
       options.headers['Authorization'] = 'Bearer $jwt';
       options.headers['X-User-Role'] = 'marketplace_admin';
     }
+    // Respetar un X-Tenant-ID explícito de la request (p.ej. "global" para
+    // vistas de plataforma); solo caer al del helper si no vino seteado.
     final tenantId = AuthHelper.getTenantId();
     if (tenantId != null) {
-      options.headers['X-Tenant-ID'] = tenantId;
+      options.headers.putIfAbsent('X-Tenant-ID', () => tenantId);
+    }
+    // Propagar identidad del operador para operaciones de administración auditadas.
+    final userId = AuthHelper.getUserId();
+    if (userId != null) {
+      options.headers.putIfAbsent('X-Operator-Id', () => userId);
     }
     handler.next(options);
   }
@@ -92,8 +103,16 @@ class KongClient {
     }
   }
 
-  Future<Response<T>> get<T>(String path, {Map<String, dynamic>? queryParameters}) =>
-      _dio.get<T>(path, queryParameters: queryParameters);
+  Future<Response<T>> get<T>(
+    String path, {
+    Map<String, dynamic>? queryParameters,
+    Map<String, dynamic>? headers,
+  }) =>
+      _dio.get<T>(
+        path,
+        queryParameters: queryParameters,
+        options: headers == null ? null : Options(headers: headers),
+      );
 
   Future<Response<T>> post<T>(String path, {dynamic data}) =>
       _dio.post<T>(path, data: data);

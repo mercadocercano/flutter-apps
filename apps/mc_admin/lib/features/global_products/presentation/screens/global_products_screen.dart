@@ -4,12 +4,22 @@ import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:mc_design_system/mc_design_system.dart';
 
+import '../../domain/models/bulk_verify_result_model.dart';
 import '../../domain/models/enrichment_result_model.dart';
 import '../../domain/models/global_product_model.dart';
 import '../bloc/global_products_bloc.dart';
 import '../widgets/reject_image_dialog.dart';
 
 const int _kMaxSelection = 100;
+
+enum _QualityBucket {
+  all,
+  high,
+  medium,
+  low,
+  noImage,
+  massVerified,
+}
 
 class GlobalProductsScreen extends StatefulWidget {
   const GlobalProductsScreen({super.key});
@@ -24,6 +34,7 @@ class _GlobalProductsScreenState extends State<GlobalProductsScreen> {
   String? _filterBusinessType;
   bool? _filterVerified;
   bool? _filterHasImage;
+  _QualityBucket _qualityBucket = _QualityBucket.all;
 
   bool _canScrollBtLeft = false;
   bool _canScrollBtRight = true;
@@ -67,14 +78,46 @@ class _GlobalProductsScreenState extends State<GlobalProductsScreen> {
   }
 
   void _applyFilters() {
+    final bucket = _qualityBucket;
+    int? minQuality;
+    int? maxQuality;
+    bool? hasImage = _filterHasImage;
+    bool? massVerifiedOnly;
+
+    switch (bucket) {
+      case _QualityBucket.all:
+        break;
+      case _QualityBucket.high:
+        minQuality = 70;
+        maxQuality = 100;
+      case _QualityBucket.medium:
+        minQuality = 40;
+        maxQuality = 69;
+      case _QualityBucket.low:
+        minQuality = 0;
+        maxQuality = 39;
+      case _QualityBucket.noImage:
+        hasImage = false;
+      case _QualityBucket.massVerified:
+        massVerifiedOnly = true;
+    }
+
     context.read<GlobalProductsBloc>().add(LoadGlobalProductsEvent(
           search: _searchController.text.trim().isEmpty
               ? null
               : _searchController.text.trim(),
           businessType: _filterBusinessType,
           isVerified: _filterVerified,
-          hasImage: _filterHasImage,
+          hasImage: hasImage,
+          minQuality: minQuality,
+          maxQuality: maxQuality,
+          massVerifiedOnly: massVerifiedOnly,
         ));
+  }
+
+  void _setBucket(_QualityBucket bucket) {
+    setState(() => _qualityBucket = bucket);
+    _applyFilters();
   }
 
   void _toggleSelection(String id) {
@@ -119,6 +162,26 @@ class _GlobalProductsScreenState extends State<GlobalProductsScreen> {
         );
   }
 
+  Future<void> _confirmAndBulkVerify(
+    BuildContext context,
+    List<String> selectedIds, {
+    required bool verify,
+  }) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (_) => _BulkVerifyConfirmDialog(
+        count: selectedIds.length,
+        verify: verify,
+      ),
+    );
+    if (confirmed != true) return;
+    if (!context.mounted) return;
+
+    context.read<GlobalProductsBloc>().add(
+          BulkVerifySelectedEvent(productIds: selectedIds, verify: verify),
+        );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -128,7 +191,9 @@ class _GlobalProductsScreenState extends State<GlobalProductsScreen> {
             current is EnrichmentSuccess ||
             current is EnrichmentError ||
             current is RejectImageSuccess ||
-            current is RejectImageError,
+            current is RejectImageError ||
+            current is BulkVerifySuccess ||
+            current is BulkVerifyError,
         listener: (context, state) {
           if (state is EnrichmentSuccess) {
             _showEnrichmentResult(context, state.result);
@@ -154,6 +219,16 @@ class _GlobalProductsScreenState extends State<GlobalProductsScreen> {
                 backgroundColor: McColors.error,
               ),
             );
+          } else if (state is BulkVerifySuccess) {
+            _showBulkVerifyResult(context, state.result, state.verify);
+          } else if (state is BulkVerifyError) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(state.message),
+                backgroundColor: McColors.error,
+              ),
+            );
+            context.read<GlobalProductsBloc>().add(DismissBulkVerifyResultEvent());
           }
         },
         buildWhen: (previous, current) =>
@@ -161,10 +236,12 @@ class _GlobalProductsScreenState extends State<GlobalProductsScreen> {
             current is! EnrichmentSuccess &&
             current is! EnrichmentError &&
             current is! RejectImageSuccess &&
-            current is! RejectImageError,
+            current is! RejectImageError &&
+            current is! BulkVerifySuccess &&
+            current is! BulkVerifyError,
         builder: (context, state) {
-          if (state is EnrichmentRunning) {
-            return _buildEnrichingOverlay();
+          if (state is EnrichmentRunning || state is BulkVerifyRunning) {
+            return _buildRunningOverlay(state is EnrichmentRunning);
           }
           if (state is GlobalProductsLoading) {
             return const Center(child: CircularProgressIndicator());
@@ -193,7 +270,23 @@ class _GlobalProductsScreenState extends State<GlobalProductsScreen> {
     });
   }
 
-  Widget _buildEnrichingOverlay() {
+  void _showBulkVerifyResult(
+    BuildContext context,
+    BulkVerifyResult result,
+    bool verify,
+  ) {
+    showDialog<void>(
+      context: context,
+      barrierDismissible: true,
+      builder: (_) => _BulkVerifyResultDialog(result: result, verify: verify),
+    ).then((_) {
+      if (context.mounted) {
+        context.read<GlobalProductsBloc>().add(DismissBulkVerifyResultEvent());
+      }
+    });
+  }
+
+  Widget _buildRunningOverlay(bool isEnrichment) {
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
@@ -201,7 +294,7 @@ class _GlobalProductsScreenState extends State<GlobalProductsScreen> {
           const CircularProgressIndicator(),
           const SizedBox(height: 20),
           Text(
-            'Enriqueciendo con IA...',
+            isEnrichment ? 'Enriqueciendo con IA...' : 'Aplicando verificación...',
             style: GoogleFonts.poppins(
               fontSize: 16,
               fontWeight: FontWeight.w600,
@@ -209,9 +302,11 @@ class _GlobalProductsScreenState extends State<GlobalProductsScreen> {
             ),
           ),
           const SizedBox(height: 8),
-          const Text(
-            'Esto puede tardar unos segundos',
-            style: TextStyle(
+          Text(
+            isEnrichment
+                ? 'Esto puede tardar unos segundos'
+                : 'Se guardará auditoría del operador',
+            style: const TextStyle(
               fontSize: 13,
               color: McColors.textSecondaryLight,
             ),
@@ -249,11 +344,12 @@ class _GlobalProductsScreenState extends State<GlobalProductsScreen> {
                 ),
               ),
               const Spacer(),
-              _buildEnrichBar(state, page.items),
+              _buildSelectionBar(state, page.items),
             ],
           ),
         ),
         _buildStatusChips(),
+        _buildQualityBucketChips(),
         _buildBtChips(businessTypes),
         const SizedBox(height: McSpacing.sm),
         Expanded(
@@ -270,8 +366,8 @@ class _GlobalProductsScreenState extends State<GlobalProductsScreen> {
     );
   }
 
-  /// Barra de acción de enriquecimiento (seleccionar todo + botón enriquecer)
-  Widget _buildEnrichBar(GlobalProductsLoaded state, List<GlobalProduct> items) {
+  /// Barra de acciones masivas (seleccionar todo + enriquecer + verificar/desverificar).
+  Widget _buildSelectionBar(GlobalProductsLoaded state, List<GlobalProduct> items) {
     if (items.isEmpty) return const SizedBox.shrink();
 
     final allIds = items.map((p) => p.id).toList();
@@ -347,6 +443,29 @@ class _GlobalProductsScreenState extends State<GlobalProductsScreen> {
         if (state.hasSelection) ...[
           const SizedBox(width: 8),
           McButton(
+            label: 'Verificar ($selectedCount)',
+            icon: Icons.verified,
+            size: McButtonSize.sm,
+            onPressed: () => _confirmAndBulkVerify(
+              context,
+              state.selectedIds.toList(),
+              verify: true,
+            ),
+          ),
+          const SizedBox(width: 8),
+          McButton(
+            label: 'Desverificar ($selectedCount)',
+            icon: Icons.remove_moderator,
+            variant: McButtonVariant.outline,
+            size: McButtonSize.sm,
+            onPressed: () => _confirmAndBulkVerify(
+              context,
+              state.selectedIds.toList(),
+              verify: false,
+            ),
+          ),
+          const SizedBox(width: 8),
+          McButton(
             label: 'Enriquecer ($selectedCount)',
             icon: Icons.auto_awesome,
             size: McButtonSize.sm,
@@ -397,9 +516,20 @@ class _GlobalProductsScreenState extends State<GlobalProductsScreen> {
           ),
           const SizedBox(width: McSpacing.sm),
           _AdminChip(
-            label: 'Con imagen',
-            isSelected: _filterHasImage == true,
+            label: 'No verificados',
+            isSelected: _filterVerified == false,
             onTap: () {
+              setState(() =>
+                  _filterVerified = _filterVerified == false ? null : false);
+              _applyFilters();
+            },
+          ),
+          const SizedBox(width: McSpacing.sm),
+          _AdminChip(
+            label: 'Con imagen',
+            isSelected: _filterHasImage == true && _qualityBucket != _QualityBucket.noImage,
+            onTap: () {
+              if (_qualityBucket == _QualityBucket.noImage) _qualityBucket = _QualityBucket.all;
               setState(() =>
                   _filterHasImage = _filterHasImage == true ? null : true);
               _applyFilters();
@@ -408,14 +538,43 @@ class _GlobalProductsScreenState extends State<GlobalProductsScreen> {
           const SizedBox(width: McSpacing.sm),
           _AdminChip(
             label: 'Sin imagen',
-            isSelected: _filterHasImage == false,
-            onTap: () {
-              setState(() =>
-                  _filterHasImage = _filterHasImage == false ? null : false);
-              _applyFilters();
-            },
+            isSelected: _qualityBucket == _QualityBucket.noImage,
+            onTap: () => _setBucket(_qualityBucket == _QualityBucket.noImage
+                ? _QualityBucket.all
+                : _QualityBucket.noImage),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildQualityBucketChips() {
+    final buckets = [
+      (_QualityBucket.all, 'Todos'),
+      (_QualityBucket.high, 'Bueno ≥70'),
+      (_QualityBucket.medium, 'Regular 40-69'),
+      (_QualityBucket.low, 'Bajo <40'),
+      (_QualityBucket.massVerified, 'Mass verified'),
+    ];
+
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      padding: const EdgeInsets.fromLTRB(
+          McSpacing.base, McSpacing.sm, McSpacing.base, 0),
+      child: Row(
+        children: buckets.map((entry) {
+          final bucket = entry.$1;
+          final label = entry.$2;
+          final isSelected = _qualityBucket == bucket;
+          return Padding(
+            padding: const EdgeInsets.only(right: McSpacing.sm),
+            child: _AdminChip(
+              label: label,
+              isSelected: isSelected,
+              onTap: () => _setBucket(isSelected ? _QualityBucket.all : bucket),
+            ),
+          );
+        }).toList(),
       ),
     );
   }
@@ -485,12 +644,12 @@ class _GlobalProductsScreenState extends State<GlobalProductsScreen> {
             builder: (_, constraints) {
               final w = constraints.crossAxisExtent;
               final cols = w < 400
-                  ? 3
+                  ? 2
                   : w < 700
-                      ? 5
+                      ? 4
                       : w < 1000
-                          ? 7
-                          : 9;
+                          ? 5
+                          : 6;
               return SliverGrid(
                 delegate: SliverChildBuilderDelegate(
                   (_, i) => _GlobalProductCard(
@@ -509,7 +668,7 @@ class _GlobalProductsScreenState extends State<GlobalProductsScreen> {
                 ),
                 gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
                   crossAxisCount: cols,
-                  childAspectRatio: 0.50,
+                  childAspectRatio: 0.60,
                   crossAxisSpacing: McSpacing.sm,
                   mainAxisSpacing: McSpacing.sm,
                 ),
@@ -743,6 +902,122 @@ class _EnrichResultDialogState extends State<_EnrichResultDialog> {
   }
 }
 
+// ─── Dialog de confirmación de bulk verify ─────────────────────────────────
+
+class _BulkVerifyConfirmDialog extends StatelessWidget {
+  final int count;
+  final bool verify;
+
+  const _BulkVerifyConfirmDialog({
+    required this.count,
+    required this.verify,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: Row(
+        children: [
+          Icon(
+            verify ? Icons.verified : Icons.remove_moderator,
+            color: verify ? McColors.success : McColors.warning,
+            size: 22,
+          ),
+          const SizedBox(width: 8),
+          Text(verify ? 'Verificar selección' : 'Desverificar selección'),
+        ],
+      ),
+      content: Text(
+        'Se ${verify ? 'verificarán' : 'desverificarán'} $count producto${count == 1 ? '' : 's'}. '
+        'La operación queda registrada con el operador actual.',
+        style: const TextStyle(fontSize: 15),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context, false),
+          child: const Text('Cancelar'),
+        ),
+        McButton(
+          label: verify ? 'Verificar' : 'Desverificar',
+          icon: verify ? Icons.verified : Icons.remove_moderator,
+          size: McButtonSize.sm,
+          onPressed: () => Navigator.pop(context, true),
+        ),
+      ],
+    );
+  }
+}
+
+// ─── Dialog de resultado de bulk verify ────────────────────────────────────
+
+class _BulkVerifyResultDialog extends StatelessWidget {
+  final BulkVerifyResult result;
+  final bool verify;
+
+  const _BulkVerifyResultDialog({
+    required this.result,
+    required this.verify,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: Row(
+        children: [
+          Icon(
+            result.failed > 0 ? Icons.warning_amber : Icons.check_circle,
+            color: result.failed > 0 ? McColors.warning : McColors.success,
+            size: 22,
+          ),
+          const SizedBox(width: 8),
+          const Text('Resultado de la verificación'),
+        ],
+      ),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          _ResultRow(
+            icon: Icons.check_circle_outline,
+            color: McColors.success,
+            label: 'Procesados',
+            value: '${result.processed}',
+          ),
+          const SizedBox(height: 8),
+          _ResultRow(
+            icon: Icons.skip_next_outlined,
+            color: McColors.textSecondaryLight,
+            label: 'Saltados',
+            value: '${result.skipped}',
+          ),
+          if (result.failed > 0) ...[
+            const SizedBox(height: 8),
+            _ResultRow(
+              icon: Icons.error_outline,
+              color: McColors.error,
+              label: 'Fallidos',
+              value: '${result.failed}',
+            ),
+          ],
+          const Divider(height: 24),
+          if (result.snapshotRef != null)
+            _ResultRow(
+              icon: Icons.save_outlined,
+              color: McColors.primary,
+              label: 'Snapshot',
+              value: result.snapshotRef!,
+            ),
+        ],
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('Cerrar'),
+        ),
+      ],
+    );
+  }
+}
+
 class _ResultRow extends StatelessWidget {
   final IconData icon;
   final Color color;
@@ -863,7 +1138,7 @@ class _GlobalProductCard extends StatelessWidget {
                         child: _SmallBadge('SIN IMG', McColors.error),
                       ),
 
-                    // Botón rechazar imagen (top-right) — solo si hay imagen
+                    // Botón rechazar imagen (top-left) — solo si hay imagen
                     if (hasImage)
                       Positioned(
                         top: 6,
@@ -894,7 +1169,7 @@ class _GlobalProductCard extends StatelessWidget {
                       bottom: 6,
                       right: 6,
                       child: Tooltip(
-                        message: isSelected ? 'Deseleccionar' : 'Seleccionar para enriquecer',
+                        message: isSelected ? 'Deseleccionar' : 'Seleccionar',
                         child: GestureDetector(
                           onTap: onTap,
                           child: AnimatedContainer(
@@ -925,21 +1200,13 @@ class _GlobalProductCard extends StatelessWidget {
                       ),
                     ),
 
-                    // Badge de enrichment status (bottom-left)
+                    // Badge de verificación (bottom-left)
                     Positioned(
                       bottom: 6,
                       left: 6,
-                      child: Tooltip(
-                        message: hasImage ? 'Enriquecido' : 'Sin enriquecer',
-                        child: Icon(
-                          hasImage
-                              ? Icons.auto_awesome
-                              : Icons.auto_awesome_outlined,
-                          size: 14,
-                          color: hasImage
-                              ? McColors.success
-                              : McColors.textSecondaryLight.withValues(alpha: 0.5),
-                        ),
+                      child: _SmallBadge(
+                        product.isVerified ? 'VERIF' : 'NO VERIF',
+                        product.isVerified ? McColors.success : McColors.textFg2,
                       ),
                     ),
                   ],

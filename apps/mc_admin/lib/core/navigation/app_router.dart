@@ -7,7 +7,9 @@ import 'admin_shell.dart';
 // Screens existentes
 import '../../features/auth/presentation/screens/login_screen.dart';
 import '../../features/business_types/presentation/screens/business_types_list_screen.dart';
-// Legacy global_products screens removed — replaced by pim/global_catalog (S010)
+// MC-E34: pantalla de gestión y verificación de global_products
+import '../../features/global_products/presentation/screens/global_products_screen.dart';
+import '../../features/global_products/presentation/screens/global_product_detail_screen.dart';
 import '../../features/dev_metrics/presentation/screens/dev_metrics_screen.dart';
 
 // PIM Taxonomy screens (S009)
@@ -62,6 +64,7 @@ import '../../features/pim/quickstart/blocs/template_analytics_bloc.dart';
 import '../../features/pim/quickstart/business_types_screen.dart';
 import '../../features/pim/quickstart/business_type_form_screen.dart';
 import '../../features/pim/quickstart/templates_screen.dart';
+import '../../features/pim/quickstart/templates_index_screen.dart';
 import '../../features/pim/quickstart/template_form_screen.dart';
 import '../../features/pim/quickstart/template_analytics_screen.dart';
 
@@ -696,7 +699,12 @@ class AppRouter {
                         MarketplaceBrandRepositoryImpl(KongClient()),
                       ),
                     ),
-                    child: BrandFormScreen(brandId: id),
+                    child: BrandFormScreen(
+                      brandId: id,
+                      getBrand: GetBrandUseCase(
+                        MarketplaceBrandRepositoryImpl(KongClient()),
+                      ),
+                    ),
                   );
                 },
               ),
@@ -1283,6 +1291,23 @@ class AppRouter {
               ),
             ],
           ),
+          // Catálogo de templates del Quickstart: lista plana de los 21 templates
+          // curados (GET /pim/api/v1/quickstart/templates). Read-only; la edición
+          // por rubro vive en Tipos de Negocio → Ver templates (/:businessTypeId).
+          GoRoute(
+            path: '/quickstart/templates',
+            name: 'quickstart-templates-index',
+            pageBuilder: (context, state) => NoTransitionPage(
+              child: TemplatesIndexScreen(
+                listTemplates: ListQuickstartTemplatesUseCase(
+                  QuickstartRepositoryImpl(KongClient()),
+                ),
+                getProducts: GetQuickstartTemplateProductsUseCase(
+                  QuickstartRepositoryImpl(KongClient()),
+                ),
+              ),
+            ),
+          ),
           GoRoute(
             path: '/quickstart/templates/:businessTypeId',
             name: 'quickstart-templates',
@@ -1412,9 +1437,22 @@ class AppRouter {
             path: '/categories',
             redirect: (context, state) => '/pim/taxonomy',
           ),
+          // MC-E34: gestión y verificación de global_products
           GoRoute(
             path: '/global-products',
-            redirect: (context, state) => '/pim/global-catalog',
+            pageBuilder: (context, state) => const NoTransitionPage(
+              child: GlobalProductsScreen(),
+            ),
+            routes: [
+              GoRoute(
+                path: ':id',
+                pageBuilder: (context, state) => NoTransitionPage(
+                  child: GlobalProductDetailScreen(
+                    productId: state.pathParameters['id']!,
+                  ),
+                ),
+              ),
+            ],
           ),
           GoRoute(
             path: '/business-types',

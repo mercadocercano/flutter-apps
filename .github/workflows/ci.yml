@@ -185,6 +185,94 @@ jobs:
             -d chat_id="${{ secrets.TELEGRAM_CHAT_ID }}" \
             --data-urlencode text="$MSG"
 
+  e2e-admin-lab:
+    name: E2E mc_admin global-products against local lab
+    runs-on: self-hosted
+    needs: test
+    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master' || github.event_name == 'workflow_dispatch'
+    env:
+      APP_URL: http://localhost:8888
+      BACKEND_AVAILABLE: '1'
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+
+      - name: Get dependencies
+        run: flutter pub get
+
+      - name: Build mc_admin web for E2E
+        working-directory: apps/mc_admin
+        run: flutter build web --release --no-pub
+
+      - name: Install Playwright deps
+        working-directory: apps/mc_admin
+        run: npm ci
+
+      - name: Install Chromium for Playwright
+        working-directory: apps/mc_admin
+        run: npx playwright install chromium
+
+      - name: Start lab services
+        run: |
+          cd $HOME/Projects
+          make infra
+          make mc
+          # Wait for Kong + PIM + IAM health
+          for i in $(seq 1 60); do
+            if curl -fsS http://localhost:8000/admin/api/v1/global-catalog/health 2>/dev/null; then
+              echo "lab ready"
+              break
+            fi
+            echo "waiting for lab... ($i)"
+            sleep 5
+          done
+
+      - name: Serve mc_admin web
+        working-directory: apps/mc_admin
+        run: npx serve build/web -p 8888 -s &
+
+      - name: Wait for mc_admin to be ready
+        run: |
+          for i in $(seq 1 30); do
+            if curl -fsS http://localhost:8888 >/dev/null 2>&1; then
+              echo "mc_admin ready"
+              break
+            fi
+            echo "waiting for mc_admin... ($i)"
+            sleep 2
+          done
+
+      - name: Run E2E global-products suite
+        working-directory: apps/mc_admin
+        run: npx playwright test e2e/global-products --reporter=line
+
+      - name: Stop lab services
+        if: always()
+        run: |
+          cd $HOME/Projects
+          make down || true
+
+      - name: Notify Telegram on success
+        if: success()
+        run: |
+          MSG=$(printf '✅ mc_admin E2E OK\nCommit: ${{ github.sha }}\nRun: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}')
+          curl -s -X POST "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage" \
+            -d chat_id="${{ secrets.TELEGRAM_CHAT_ID }}" \
+            --data-urlencode text="$MSG"
+
+      - name: Notify Telegram on failure
+        if: failure()
+        run: |
+          MSG=$(printf '❌ mc_admin E2E FAILED\nCommit: ${{ github.sha }}\nRun: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}')
+          curl -s -X POST "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage" \
+            -d chat_id="${{ secrets.TELEGRAM_CHAT_ID }}" \
+            --data-urlencode text="$MSG"
+
   deploy-admin-web:
     name: Deploy mc_admin web → admin.mercadocercano.com.ar
     runs-on: ubuntu-latest

@@ -1,6 +1,7 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../data/global_products_repository.dart';
+import '../../domain/models/bulk_verify_result_model.dart';
 import '../../domain/models/enrichment_result_model.dart';
 import '../../domain/models/global_product_model.dart';
 
@@ -13,6 +14,9 @@ class LoadGlobalProductsEvent extends GlobalProductsEvent {
   final String? businessType;
   final bool? isVerified;
   final bool? hasImage;
+  final int? minQuality;
+  final int? maxQuality;
+  final bool? massVerifiedOnly;
   final int page;
 
   LoadGlobalProductsEvent({
@@ -20,6 +24,9 @@ class LoadGlobalProductsEvent extends GlobalProductsEvent {
     this.businessType,
     this.isVerified,
     this.hasImage,
+    this.minQuality,
+    this.maxQuality,
+    this.massVerifiedOnly,
     this.page = 1,
   });
 }
@@ -41,7 +48,7 @@ class RejectProductImageEvent extends GlobalProductsEvent {
   RejectProductImageEvent(this.productId);
 }
 
-// Selección múltiple para enrichment
+// Selección múltiple para enrichment / bulk verify
 class ToggleProductSelectionEvent extends GlobalProductsEvent {
   final String productId;
   ToggleProductSelectionEvent(this.productId);
@@ -68,6 +75,19 @@ class RunEnrichmentEvent extends GlobalProductsEvent {
 
 class DismissEnrichmentResultEvent extends GlobalProductsEvent {}
 
+// Verificación / desverificación en lote
+class BulkVerifySelectedEvent extends GlobalProductsEvent {
+  final List<String> productIds;
+  final bool verify;
+
+  BulkVerifySelectedEvent({
+    required this.productIds,
+    required this.verify,
+  });
+}
+
+class DismissBulkVerifyResultEvent extends GlobalProductsEvent {}
+
 // ─── States ────────────────────────────────────────────────────────────────
 
 abstract class GlobalProductsState {}
@@ -82,6 +102,9 @@ class GlobalProductsLoaded extends GlobalProductsState {
   final String? activeBusinessType;
   final bool? activeIsVerified;
   final bool? activeHasImage;
+  final int? activeMinQuality;
+  final int? activeMaxQuality;
+  final bool? activeMassVerifiedOnly;
   final List<String> allBusinessTypes;
   final Set<String> selectedIds;
 
@@ -91,6 +114,9 @@ class GlobalProductsLoaded extends GlobalProductsState {
     this.activeBusinessType,
     this.activeIsVerified,
     this.activeHasImage,
+    this.activeMinQuality,
+    this.activeMaxQuality,
+    this.activeMassVerifiedOnly,
     this.allBusinessTypes = const [],
     this.selectedIds = const {},
   });
@@ -104,10 +130,15 @@ class GlobalProductsLoaded extends GlobalProductsState {
       activeBusinessType: activeBusinessType,
       activeIsVerified: activeIsVerified,
       activeHasImage: activeHasImage,
+      activeMinQuality: activeMinQuality,
+      activeMaxQuality: activeMaxQuality,
+      activeMassVerifiedOnly: activeMassVerifiedOnly,
       allBusinessTypes: allBusinessTypes,
       selectedIds: newSelected,
     );
   }
+
+  GlobalProductsLoaded withClearedSelection() => withSelection(const {});
 }
 
 class GlobalProductDetailLoaded extends GlobalProductsState {
@@ -145,6 +176,20 @@ class EnrichmentError extends GlobalProductsState {
   EnrichmentError(this.message);
 }
 
+class BulkVerifyRunning extends GlobalProductsState {}
+
+class BulkVerifySuccess extends GlobalProductsState {
+  final BulkVerifyResult result;
+  final bool verify;
+
+  BulkVerifySuccess({required this.result, required this.verify});
+}
+
+class BulkVerifyError extends GlobalProductsState {
+  final String message;
+  BulkVerifyError(this.message);
+}
+
 // ─── BLoC ──────────────────────────────────────────────────────────────────
 
 class GlobalProductsBloc
@@ -154,7 +199,7 @@ class GlobalProductsBloc
   List<String> _businessTypes = [];
 
   /// Última carga exitosa: la mantenemos para poder restaurar estado
-  /// después del enrichment sin recargar la pantalla.
+  /// después del enrichment / bulk verify sin recargar la pantalla.
   GlobalProductsLoaded? _lastLoaded;
 
   GlobalProductsBloc({required GlobalProductsRepository repository})
@@ -170,6 +215,8 @@ class GlobalProductsBloc
     on<RunEnrichmentEvent>(_onRunEnrichment);
     on<DismissEnrichmentResultEvent>(_onDismissResult);
     on<RejectProductImageEvent>(_onRejectImage);
+    on<BulkVerifySelectedEvent>(_onBulkVerify);
+    on<DismissBulkVerifyResultEvent>(_onDismissBulkVerifyResult);
   }
 
   Future<void> _onLoadBusinessTypes(
@@ -194,6 +241,9 @@ class GlobalProductsBloc
         businessType: event.businessType,
         isVerified: event.isVerified,
         hasImage: event.hasImage,
+        minQuality: event.minQuality,
+        maxQuality: event.maxQuality,
+        massVerifiedOnly: event.massVerifiedOnly,
         page: event.page,
       );
       final loaded = GlobalProductsLoaded(
@@ -202,6 +252,9 @@ class GlobalProductsBloc
         activeBusinessType: event.businessType,
         activeIsVerified: event.isVerified,
         activeHasImage: event.hasImage,
+        activeMinQuality: event.minQuality,
+        activeMaxQuality: event.maxQuality,
+        activeMassVerifiedOnly: event.massVerifiedOnly,
         allBusinessTypes: _businessTypes,
       );
       _lastLoaded = loaded;
@@ -330,6 +383,9 @@ class GlobalProductsBloc
           activeBusinessType: current.activeBusinessType,
           activeIsVerified: current.activeIsVerified,
           activeHasImage: current.activeHasImage,
+          activeMinQuality: current.activeMinQuality,
+          activeMaxQuality: current.activeMaxQuality,
+          activeMassVerifiedOnly: current.activeMassVerifiedOnly,
           allBusinessTypes: current.allBusinessTypes,
           selectedIds: current.selectedIds,
         );
@@ -351,7 +407,7 @@ class GlobalProductsBloc
     // Restaurar lista sin selección y recargar para reflejar nuevas imágenes
     final current = _lastLoaded;
     if (current != null) {
-      final fresh = current.withSelection(const {});
+      final fresh = current.withClearedSelection();
       _lastLoaded = fresh;
       emit(fresh);
       // Recargar la lista para reflejar cambios de enrichment
@@ -360,6 +416,49 @@ class GlobalProductsBloc
         businessType: current.activeBusinessType,
         isVerified: current.activeIsVerified,
         hasImage: current.activeHasImage,
+        minQuality: current.activeMinQuality,
+        maxQuality: current.activeMaxQuality,
+        massVerifiedOnly: current.activeMassVerifiedOnly,
+      ));
+    } else {
+      add(LoadGlobalProductsEvent());
+    }
+  }
+
+  Future<void> _onBulkVerify(
+    BulkVerifySelectedEvent event,
+    Emitter<GlobalProductsState> emit,
+  ) async {
+    emit(BulkVerifyRunning());
+    try {
+      final result = await _repository.bulkVerify(
+        ids: event.productIds,
+        verify: event.verify,
+      );
+      emit(BulkVerifySuccess(result: result, verify: event.verify));
+    } catch (e) {
+      emit(BulkVerifyError('Error al verificar productos: $e'));
+    }
+  }
+
+  void _onDismissBulkVerifyResult(
+    DismissBulkVerifyResultEvent event,
+    Emitter<GlobalProductsState> emit,
+  ) {
+    final current = _lastLoaded;
+    if (current != null) {
+      final fresh = current.withClearedSelection();
+      _lastLoaded = fresh;
+      emit(fresh);
+      // Refrescar listado para reflejar cambios de verificación
+      add(LoadGlobalProductsEvent(
+        search: current.activeSearch,
+        businessType: current.activeBusinessType,
+        isVerified: current.activeIsVerified,
+        hasImage: current.activeHasImage,
+        minQuality: current.activeMinQuality,
+        maxQuality: current.activeMaxQuality,
+        massVerifiedOnly: current.activeMassVerifiedOnly,
       ));
     } else {
       add(LoadGlobalProductsEvent());
