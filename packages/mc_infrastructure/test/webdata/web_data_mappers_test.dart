@@ -54,8 +54,8 @@ void main() {
 
   final baseDashboardJson = <String, dynamic>{
     'active_sources': 5,
-    'inactive_sources': 2,
-    'jobs_today': 10,
+    'total_sources': 7,
+    'total_jobs': 10,
     'total_products': 3500,
     'success_rate': 0.87,
   };
