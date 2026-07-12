@@ -10,6 +10,8 @@ import 'quickstart_mappers.dart';
 class QuickstartRepositoryImpl implements QuickstartRepository {
   static const _businessTypesBase = '/pim/api/v1/business-types';
   static const _templatesBase = '/pim/api/v1/business-type-templates';
+  static const _quickstartTemplatesBase = '/pim/api/v1/quickstart/templates';
+  static const _quickstartProductsBase = '/pim/api/v1/quickstart/products';
   static const _aiGenerateBase = '/ai/ai/generate-template';
 
   final KongClient _client;
@@ -104,6 +106,39 @@ class QuickstartRepositoryImpl implements QuickstartRepository {
   // -------------------------------------------------------------------------
   // Templates
   // -------------------------------------------------------------------------
+
+  @override
+  Future<List<QuickstartTemplateSummary>> listQuickstartTemplates({
+    String? status,
+  }) async {
+    final response = await _client.get<Map<String, dynamic>>(
+      _quickstartTemplatesBase,
+      queryParameters: <String, dynamic>{
+        if (status != null) 'status': status,
+      },
+    );
+    final data = _requireData(response);
+    final list = (data['templates'] as List? ?? const [])
+        .whereType<Map<String, dynamic>>()
+        .map(QuickstartTemplateSummary.fromJson)
+        .toList();
+    return list;
+  }
+
+  @override
+  Future<List<QuickstartTemplateProduct>> getQuickstartTemplateProducts(
+    String businessTypeSlug,
+  ) async {
+    final response = await _client.get<Map<String, dynamic>>(
+      '$_quickstartProductsBase/$businessTypeSlug',
+    );
+    final data = _requireData(response);
+    final list = (data['products'] as List? ?? const [])
+        .whereType<Map<String, dynamic>>()
+        .map(QuickstartTemplateProduct.fromJson)
+        .toList();
+    return list;
+  }
 
   @override
   Future<List<BusinessTypeTemplate>> listTemplates(

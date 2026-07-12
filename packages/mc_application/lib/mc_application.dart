@@ -48,6 +48,8 @@ export 'src/pim/quickstart/deactivate_business_type_use_case.dart';
 
 // PIM — Quickstart Templates use cases (S012-T003)
 export 'src/pim/quickstart/templates/list_templates_use_case.dart';
+export 'src/pim/quickstart/templates/list_quickstart_templates_use_case.dart';
+export 'src/pim/quickstart/templates/get_quickstart_template_products_use_case.dart';
 export 'src/pim/quickstart/templates/get_template_use_case.dart';
 export 'src/pim/quickstart/templates/create_template_use_case.dart';
 export 'src/pim/quickstart/templates/update_template_use_case.dart';

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
+import 'package:mc_application/mc_application.dart';
 import 'package:mc_domain/mc_domain.dart';
 
 import '../../../core/utils/color_utils.dart';
@@ -12,7 +13,16 @@ class BrandFormScreen extends StatefulWidget {
   final String? brandId;
   final MarketplaceBrand? initialBrand;
 
-  const BrandFormScreen({super.key, this.brandId, this.initialBrand});
+  /// Carga la marca por id cuando se edita sin un [initialBrand] precargado
+  /// (p. ej. al entrar directo a la URL `/pim/brands/:id/edit`).
+  final GetBrandUseCase? getBrand;
+
+  const BrandFormScreen({
+    super.key,
+    this.brandId,
+    this.initialBrand,
+    this.getBrand,
+  });
 
   bool get isEditing => brandId != null;
 
@@ -32,6 +42,7 @@ class _BrandFormScreenState extends State<BrandFormScreen> {
   final _nameFocusNode = FocusNode();
 
   String? _nameConflictError;
+  bool _isLoadingBrand = false;
 
   @override
   void initState() {
@@ -41,15 +52,39 @@ class _BrandFormScreenState extends State<BrandFormScreen> {
     _nameController.addListener(_onPreviewChanged);
     _backgroundColorController.addListener(_onPreviewChanged);
     _textColorController.addListener(_onPreviewChanged);
+
     final brand = widget.initialBrand;
     if (brand != null) {
-      _nameController.text = brand.name;
-      _descriptionController.text = brand.description ?? '';
-      _logoUrlController.text = brand.logoUrl ?? '';
-      _websiteController.text = brand.website ?? '';
-      _backgroundColorController.text = brand.backgroundColor ?? '';
-      _textColorController.text = brand.textColor ?? '';
-      _typographyController.text = brand.typography ?? '';
+      _populate(brand);
+    } else if (widget.isEditing && widget.getBrand != null) {
+      // Editando por URL directa: no llegó initialBrand, cargar por id.
+      _loadBrand();
+    }
+  }
+
+  void _populate(MarketplaceBrand brand) {
+    _nameController.text = brand.name;
+    _descriptionController.text = brand.description ?? '';
+    _logoUrlController.text = brand.logoUrl ?? '';
+    _websiteController.text = brand.website ?? '';
+    _backgroundColorController.text = brand.backgroundColor ?? '';
+    _textColorController.text = brand.textColor ?? '';
+    _typographyController.text = brand.typography ?? '';
+  }
+
+  Future<void> _loadBrand() async {
+    setState(() => _isLoadingBrand = true);
+    try {
+      final brand = await widget.getBrand!.execute(widget.brandId!);
+      if (!mounted) return;
+      setState(() {
+        _populate(brand);
+        _isLoadingBrand = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _isLoadingBrand = false);
+      AdminSnackbars.showError(context, 'Error al cargar la marca: $e');
     }
   }
 
@@ -146,7 +181,7 @@ class _BrandFormScreenState extends State<BrandFormScreen> {
       },
       child: BlocBuilder<BrandFormBloc, BrandFormState>(
         builder: (context, state) {
-          final isLoading = state is BrandFormSubmitting;
+          final isLoading = state is BrandFormSubmitting || _isLoadingBrand;
           final errorMsg =
               state is BrandFormError ? state.message : null;
 
@@ -184,7 +219,7 @@ class _BrandFormScreenState extends State<BrandFormScreen> {
               Row(
                 children: [
                   Expanded(
-                    child: _buildTextField(
+                    child: _buildColorField(
                       controller: _backgroundColorController,
                       label: 'Color de fondo',
                       enabled: !isLoading,
@@ -193,7 +228,7 @@ class _BrandFormScreenState extends State<BrandFormScreen> {
                   ),
                   const SizedBox(width: 16),
                   Expanded(
-                    child: _buildTextField(
+                    child: _buildColorField(
                       controller: _textColorController,
                       label: 'Color de texto',
                       enabled: !isLoading,
@@ -216,6 +251,89 @@ class _BrandFormScreenState extends State<BrandFormScreen> {
         },
       ),
     );
+  }
+
+  Widget _buildColorField({
+    required TextEditingController controller,
+    required String label,
+    bool enabled = true,
+    String? hint,
+  }) {
+    final current = parseHexColor(controller.text);
+    return TextFormField(
+      controller: controller,
+      enabled: enabled,
+      decoration: InputDecoration(
+        labelText: label,
+        hintText: hint,
+        border: const OutlineInputBorder(),
+        suffixIcon: Padding(
+          padding: const EdgeInsets.only(right: 8),
+          child: InkWell(
+            borderRadius: BorderRadius.circular(4),
+            onTap: enabled ? () => _pickColor(controller) : null,
+            child: Container(
+              width: 28,
+              height: 28,
+              decoration: BoxDecoration(
+                color: current ?? Colors.transparent,
+                borderRadius: BorderRadius.circular(4),
+                border: Border.all(color: Colors.grey.shade400),
+              ),
+              child: current == null
+                  ? Icon(Icons.colorize, size: 16, color: Colors.grey[500])
+                  : null,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _pickColor(TextEditingController controller) async {
+    final selected = await showDialog<String>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Elegir color'),
+        content: SizedBox(
+          width: 320,
+          child: Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: _colorPalette.map((hex) {
+              final color = parseHexColor(hex)!;
+              final isSelected =
+                  controller.text.trim().toUpperCase() == hex.toUpperCase();
+              return InkWell(
+                borderRadius: BorderRadius.circular(6),
+                onTap: () => Navigator.of(ctx).pop(hex),
+                child: Container(
+                  width: 36,
+                  height: 36,
+                  decoration: BoxDecoration(
+                    color: color,
+                    borderRadius: BorderRadius.circular(6),
+                    border: Border.all(
+                      color: isSelected ? Colors.black : Colors.grey.shade300,
+                      width: isSelected ? 2 : 1,
+                    ),
+                  ),
+                ),
+              );
+            }).toList(),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: const Text('Cancelar'),
+          ),
+        ],
+      ),
+    );
+    if (selected != null) {
+      controller.text = selected;
+    }
   }
 
   Widget _buildColorPreview() {
@@ -302,3 +420,11 @@ class _BrandFormScreenState extends State<BrandFormScreen> {
     );
   }
 }
+
+/// Paleta de presets para el picker de colores de marca.
+const List<String> _colorPalette = [
+  '#FFFFFF', '#F8FAFC', '#E2E8F0', '#94A3B8', '#475569', '#1E293B', '#000000',
+  '#EF4444', '#F97316', '#F59E0B', '#EAB308', '#84CC16', '#22C55E', '#10B981',
+  '#14B8A6', '#06B6D4', '#0EA5E9', '#3B82F6', '#6366F1', '#8B5CF6', '#A855F7',
+  '#D946EF', '#EC4899', '#F43F5E', '#0A21C0', '#9333EA', '#16A34A', '#DC2626',
+];

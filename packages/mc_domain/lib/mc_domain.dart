@@ -17,6 +17,7 @@ export 'src/product/category.dart';
 // Sales domain
 export 'src/sale/pos_sale.dart';
 export 'src/sale/pos_sale_item.dart';
+export 'src/sale/sale_receipt.dart';
 
 // PIM — Brands (admin marketplace)
 export 'src/pim/brand/marketplace_brand.dart';
@@ -43,6 +44,8 @@ export 'src/pim/attributes/marketplace_attribute_repository.dart';
 // PIM — Quickstart (admin marketplace, S012)
 export 'src/pim/quickstart/business_type.dart';
 export 'src/pim/quickstart/business_type_template.dart';
+export 'src/pim/quickstart/quickstart_template_product.dart';
+export 'src/pim/quickstart/quickstart_template_summary.dart';
 export 'src/pim/quickstart/template_analytics.dart';
 export 'src/pim/quickstart/quickstart_repository.dart';
 
