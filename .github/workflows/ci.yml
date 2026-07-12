@@ -241,8 +241,11 @@ jobs:
       - name: Start lab services
         run: |
           cd $HOME/Projects
+          # Limpiar contenedores huérfanos de corridas anteriores en el runner self-hosted.
+          docker compose -f active/mercado-cercano/docker-compose.yml down || true
+          docker rm -f mc-iam-service mc-pim-service mc-catalog-bff-service mc-stock-service mc-postgres-setup 2>/dev/null || true
           make infra
-          # MC-E34 solo necestra IAM + PIM + Catalog-BFF; evitar build de todo el stack.
+          # MC-E34 solo necesita IAM + PIM + Catalog-BFF; evitar build de todo el stack.
           docker compose -f active/mercado-cercano/docker-compose.yml up -d --build postgres-setup iam-service pim-service catalog-bff-service
           # Wait for Kong + PIM + IAM health
           for i in $(seq 1 60); do
