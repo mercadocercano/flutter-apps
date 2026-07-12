@@ -185,14 +185,11 @@ jobs:
             -d chat_id="${{ secrets.TELEGRAM_CHAT_ID }}" \
             --data-urlencode text="$MSG"
 
-  e2e-admin-lab:
-    name: E2E mc_admin global-products against local lab
-    runs-on: self-hosted
+  build-mc-admin-e2e:
+    name: Build mc_admin web for E2E
+    runs-on: ubuntu-latest
     needs: test
     if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master' || github.event_name == 'workflow_dispatch'
-    env:
-      APP_URL: http://localhost:8888
-      BACKEND_AVAILABLE: '1'
     steps:
       - uses: actions/checkout@v4
 
@@ -205,9 +202,33 @@ jobs:
       - name: Get dependencies
         run: flutter pub get
 
-      - name: Build mc_admin web for E2E
+      - name: Build mc_admin web
         working-directory: apps/mc_admin
         run: flutter build web --release --no-pub
+
+      - name: Upload mc_admin web artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: mc-admin-web-e2e
+          path: apps/mc_admin/build/web
+          retention-days: 1
+
+  e2e-admin-lab:
+    name: E2E mc_admin global-products against local lab
+    runs-on: self-hosted
+    needs: build-mc-admin-e2e
+    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master' || github.event_name == 'workflow_dispatch'
+    env:
+      APP_URL: http://localhost:8888
+      BACKEND_AVAILABLE: '1'
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download mc_admin web artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: mc-admin-web-e2e
+          path: apps/mc_admin/build/web
 
       - name: Install Playwright deps
         working-directory: apps/mc_admin
