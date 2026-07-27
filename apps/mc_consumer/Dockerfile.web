@@ -2,7 +2,7 @@ FROM nginxinc/nginx-unprivileged:alpine
 
 COPY build/web /usr/share/nginx/html
 
-# Listen on 3000 to match k8s service targetPort (backoffice-admin)
+# Listen on 3000 (consumer web)
 RUN printf 'server {\n\
   listen 3000;\n\
   root /usr/share/nginx/html;\n\

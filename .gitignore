@@ -53,3 +53,6 @@ lcov.info
 coverage_full/
 coverage_gc/
 **/*.vm.json
+
+# Newman local environment may contain a session JWT
+apps/mc_pos/postman/E15-local.postman_environment.json

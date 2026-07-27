@@ -1,0 +1,13 @@
+.git
+.github
+**/build
+**/.dart_tool
+**/.flutter-plugins
+**/.flutter-plugins-dependencies
+**/ios
+**/android
+**/macos
+**/windows
+**/linux
+**/.idea
+**/*.iml

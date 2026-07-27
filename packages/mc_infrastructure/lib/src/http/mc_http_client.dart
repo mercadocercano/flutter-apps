@@ -27,6 +27,19 @@ class McHttpClient {
   }) =>
       _dio.get(path, queryParameters: queryParameters);
 
+  /// GET que devuelve el body como bytes crudos (ej: descargar un PDF).
+  Future<List<int>> getBytes(
+    String path, {
+    Map<String, dynamic>? queryParameters,
+  }) async {
+    final response = await _dio.get<List<int>>(
+      path,
+      queryParameters: queryParameters,
+      options: Options(responseType: ResponseType.bytes),
+    );
+    return response.data ?? const <int>[];
+  }
+
   /// POST con body JSON.
   Future<Response<T>> post<T>(
     String path, {

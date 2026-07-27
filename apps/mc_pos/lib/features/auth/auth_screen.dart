@@ -32,7 +32,11 @@ class _AuthScreenState extends State<AuthScreen>
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: McColors.cobaltTint,
-      body: SafeArea(
+      // Fondo "mapa del barrio" con pines animados. Drop-in de la imagen final:
+      // descomentar mapImage cuando esté en assets/images/ (ver README ahí).
+      body: McLoginBackground(
+        // mapImage: const AssetImage('assets/images/login_map.webp'),
+        child: SafeArea(
         child: Center(
           child: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 420),
@@ -41,32 +45,20 @@ class _AuthScreenState extends State<AuthScreen>
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  // Header visual
-                  Container(
-                    width: 80,
-                    height: 80,
-                    decoration: BoxDecoration(
-                      color: McColors.primary.withValues(alpha: 0.1),
-                      borderRadius: BorderRadius.circular(McSpacing.radiusLg),
-                    ),
-                    child: const Icon(
-                      Icons.storefront,
-                      size: 48,
-                      color: McColors.primary,
-                    ),
-                  ),
+                  // Header visual — logo de marca en badge blanco sobre el scrim.
+                  const McBrandLogo(size: 88, badge: true),
                   const SizedBox(height: McSpacing.md),
                   Text(
                     'Mercado Cercano',
                     style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                          color: McColors.primary,
+                          color: Colors.white,
                           fontWeight: FontWeight.bold,
                         ),
                   ),
                   Text(
                     'POS — Punto de Venta',
                     style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          color: McColors.textSecondaryLight,
+                          color: Colors.white.withValues(alpha: 0.85),
                         ),
                   ),
                   const SizedBox(height: McSpacing.xl),
@@ -104,6 +96,7 @@ class _AuthScreenState extends State<AuthScreen>
               ),
             ),
           ),
+        ),
         ),
       ),
     );

@@ -23,8 +23,14 @@ dependencies:
     path: ../../packages/mc_hardware
   flutter_bloc: ^9.1.0
   flutter_secure_storage: ^9.2.4
+  shared_preferences: ^2.3.3
   cupertino_icons: ^1.0.8
   google_fonts: ^6.2.1
+  # Impresión / compartir del PDF A4 generado por el backend (E18 Tramo C).
+  printing: ^5.13.3
+  # Disponible para fallback de render en cliente si el endpoint de PDF
+  # del backend no estuviera listo (hoy preferimos consumir el del backend).
+  pdf: ^3.11.1
 
 dev_dependencies:
   flutter_test:
@@ -36,3 +42,5 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
+  assets:
+    - assets/images/

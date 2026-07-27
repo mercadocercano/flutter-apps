@@ -1,0 +1,305 @@
+{
+  "info": {
+    "name": "MC-E15 — mc_pos endpoints (Kong sweep)",
+    "description": "Un request por cada endpoint declarado en api_endpoints.dart (mc_infrastructure). Usa {{jwt}} y {{tenant_id}} — nunca tokens hardcodeados. Corrida contra localhost:8000 (Kong). Ver active/mercado-cercano/docs/api-audit-E15.md para resultados documentados.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "auth": {
+    "type": "bearer",
+    "bearer": [{ "key": "token", "value": "{{jwt}}", "type": "string" }]
+  },
+  "variable": [
+    { "key": "base_url", "value": "http://localhost:8000" },
+    { "key": "jwt", "value": "" },
+    { "key": "tenant_id", "value": "" },
+    { "key": "product_id", "value": "" },
+    { "key": "category_id", "value": "" },
+    { "key": "brand_id", "value": "" },
+    { "key": "sale_id", "value": "00000000-0000-0000-0000-000000000000" },
+    { "key": "config_key", "value": "catalog.stock_policy" }
+  ],
+  "item": [
+    {
+      "name": "IAM",
+      "item": [
+        {
+          "name": "authLogin",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\"email\":\"admin@democompany.com\",\"password\":\"123456\",\"provider\":\"LOCAL\"}" },
+            "url": { "raw": "{{base_url}}/iam/api/v1/auth/login", "host": ["{{base_url}}"], "path": ["iam", "api", "v1", "auth", "login"] }
+          }
+        },
+        {
+          "name": "authRefresh",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\"refresh_token\":\"{{refresh_token}}\"}" },
+            "url": { "raw": "{{base_url}}/iam/api/v1/auth/refresh", "host": ["{{base_url}}"], "path": ["iam", "api", "v1", "auth", "refresh"] }
+          }
+        },
+        {
+          "name": "authLogout",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Authorization", "value": "Bearer {{jwt}}" }],
+            "url": { "raw": "{{base_url}}/iam/api/v1/auth/logout", "host": ["{{base_url}}"], "path": ["iam", "api", "v1", "auth", "logout"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Onboarding",
+      "item": [
+        {
+          "name": "onboardingRegister",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{}" },
+            "url": { "raw": "{{base_url}}/onboarding/api/v1/register-user", "host": ["{{base_url}}"], "path": ["onboarding", "api", "v1", "register-user"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "PIM - Categorias",
+      "item": [
+        {
+          "name": "categories",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "X-Tenant-ID", "value": "{{tenant_id}}" }],
+            "url": { "raw": "{{base_url}}/pim/api/v1/categories", "host": ["{{base_url}}"], "path": ["pim", "api", "v1", "categories"] }
+          }
+        },
+        {
+          "name": "category(id)",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "X-Tenant-ID", "value": "{{tenant_id}}" }],
+            "url": { "raw": "{{base_url}}/pim/api/v1/categories/{{category_id}}", "host": ["{{base_url}}"], "path": ["pim", "api", "v1", "categories", "{{category_id}}"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "PIM - Marcas",
+      "item": [
+        {
+          "name": "brands",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "X-Tenant-ID", "value": "{{tenant_id}}" }],
+            "url": { "raw": "{{base_url}}/pim/api/v1/brands", "host": ["{{base_url}}"], "path": ["pim", "api", "v1", "brands"] }
+          }
+        },
+        {
+          "name": "brand(id)",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "X-Tenant-ID", "value": "{{tenant_id}}" }],
+            "url": { "raw": "{{base_url}}/pim/api/v1/brands/{{brand_id}}", "host": ["{{base_url}}"], "path": ["pim", "api", "v1", "brands", "{{brand_id}}"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "PIM - Catalogo",
+      "item": [
+        {
+          "name": "products",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "X-Tenant-ID", "value": "{{tenant_id}}" }],
+            "url": { "raw": "{{base_url}}/pim/api/v1/products", "host": ["{{base_url}}"], "path": ["pim", "api", "v1", "products"] }
+          }
+        },
+        {
+          "name": "product(id)",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "X-Tenant-ID", "value": "{{tenant_id}}" }],
+            "url": { "raw": "{{base_url}}/pim/api/v1/products/{{product_id}}", "host": ["{{base_url}}"], "path": ["pim", "api", "v1", "products", "{{product_id}}"] }
+          }
+        },
+        {
+          "name": "productVariants(id)",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "X-Tenant-ID", "value": "{{tenant_id}}" }],
+            "url": { "raw": "{{base_url}}/pim/api/v1/products/{{product_id}}/variants", "host": ["{{base_url}}"], "path": ["pim", "api", "v1", "products", "{{product_id}}", "variants"] }
+          }
+        },
+        {
+          "name": "productsByCriteria",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "X-Tenant-ID", "value": "{{tenant_id}}" }],
+            "url": { "raw": "{{base_url}}/pim/api/v1/products/criteria", "host": ["{{base_url}}"], "path": ["pim", "api", "v1", "products", "criteria"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Sales - POS",
+      "item": [
+        {
+          "name": "posSales",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "X-Tenant-ID", "value": "{{tenant_id}}" }],
+            "url": { "raw": "{{base_url}}/sales/api/v1/sales/pos", "host": ["{{base_url}}"], "path": ["sales", "api", "v1", "sales", "pos"] }
+          }
+        },
+        {
+          "name": "posSale(id)",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "X-Tenant-ID", "value": "{{tenant_id}}" }],
+            "url": { "raw": "{{base_url}}/sales/api/v1/sales/pos/{{sale_id}}", "host": ["{{base_url}}"], "path": ["sales", "api", "v1", "sales", "pos", "{{sale_id}}"] }
+          }
+        },
+        {
+          "name": "posSalePdf(id)",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "X-Tenant-ID", "value": "{{tenant_id}}" }],
+            "url": { "raw": "{{base_url}}/sales/api/v1/sales/pos/{{sale_id}}/pdf", "host": ["{{base_url}}"], "path": ["sales", "api", "v1", "sales", "pos", "{{sale_id}}", "pdf"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Stock",
+      "item": [
+        {
+          "name": "stockEntries (POST)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "X-Tenant-ID", "value": "{{tenant_id}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": { "mode": "raw", "raw": "{\"variant_sku\":\"ALMACEN-EE401E1F\",\"product_name\":\"Test\",\"entry_type\":\"initial_stock\",\"quantity\":10,\"unit_of_measure\":\"unit\",\"notes\":\"audit-E15\"}" },
+            "url": { "raw": "{{base_url}}/stock/api/v1/stock-entries", "host": ["{{base_url}}"], "path": ["stock", "api", "v1", "stock-entries"] }
+          }
+        },
+        {
+          "name": "stockAvailability",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "X-Tenant-ID", "value": "{{tenant_id}}" }],
+            "url": { "raw": "{{base_url}}/stock/api/v1/availability", "host": ["{{base_url}}"], "path": ["stock", "api", "v1", "availability"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Global Catalog",
+      "item": [
+        {
+          "name": "globalProducts",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "X-Tenant-ID", "value": "{{tenant_id}}" }],
+            "url": { "raw": "{{base_url}}/pim/api/v1/global-catalog/products", "host": ["{{base_url}}"], "path": ["pim", "api", "v1", "global-catalog", "products"] }
+          }
+        },
+        {
+          "name": "enrichmentQueue",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "X-Tenant-ID", "value": "{{tenant_id}}" }],
+            "url": { "raw": "{{base_url}}/pim/api/v1/global-catalog/enrichment-queue", "host": ["{{base_url}}"], "path": ["pim", "api", "v1", "global-catalog", "enrichment-queue"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Business Types",
+      "item": [
+        {
+          "name": "businessTypes",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "X-Tenant-ID", "value": "{{tenant_id}}" }],
+            "url": { "raw": "{{base_url}}/pim/api/v1/business-types", "host": ["{{base_url}}"], "path": ["pim", "api", "v1", "business-types"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Quickstart",
+      "item": [
+        {
+          "name": "quickstartTemplates",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "X-Tenant-ID", "value": "{{tenant_id}}" }],
+            "url": { "raw": "{{base_url}}/pim/api/v1/quickstart/templates", "host": ["{{base_url}}"], "path": ["pim", "api", "v1", "quickstart", "templates"] }
+          }
+        },
+        {
+          "name": "quickstartApply",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "X-Tenant-ID", "value": "{{tenant_id}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": { "mode": "raw", "raw": "{}" },
+            "url": { "raw": "{{base_url}}/pim/api/v1/quickstart/apply", "host": ["{{base_url}}"], "path": ["pim", "api", "v1", "quickstart", "apply"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Tenant Config",
+      "item": [
+        {
+          "name": "tenantConfig(key) [ruta declarada en front — ROTA, ver api-audit-E15.md]",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "X-Tenant-ID", "value": "{{tenant_id}}" }],
+            "url": { "raw": "{{base_url}}/tenant-service/api/v1/tenant/config/{{config_key}}", "host": ["{{base_url}}"], "path": ["tenant-service", "api", "v1", "tenant", "config", "{{config_key}}"] }
+          }
+        },
+        {
+          "name": "tenantConfig(key) [ruta real de Kong]",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "X-Tenant-ID", "value": "{{tenant_id}}" }],
+            "url": { "raw": "{{base_url}}/tenant/api/v1/tenant/config/{{config_key}}", "host": ["{{base_url}}"], "path": ["tenant", "api", "v1", "tenant", "config", "{{config_key}}"] }
+          }
+        },
+        {
+          "name": "tenantConfigBase (POST) [ruta declarada en front — ROTA]",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "X-Tenant-ID", "value": "{{tenant_id}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": { "mode": "raw", "raw": "{\"key\":\"test.key\",\"value\":\"x\"}" },
+            "url": { "raw": "{{base_url}}/tenant-service/api/v1/tenant/config", "host": ["{{base_url}}"], "path": ["tenant-service", "api", "v1", "tenant", "config"] }
+          }
+        },
+        {
+          "name": "tenantConfigBase (POST) [ruta real de Kong]",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "X-Tenant-ID", "value": "{{tenant_id}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": { "mode": "raw", "raw": "{\"key\":\"test.key\",\"value\":\"x\"}" },
+            "url": { "raw": "{{base_url}}/tenant/api/v1/tenant/config", "host": ["{{base_url}}"], "path": ["tenant", "api", "v1", "tenant", "config"] }
+          }
+        }
+      ]
+    }
+  ]
+}

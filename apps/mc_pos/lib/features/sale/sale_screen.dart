@@ -5,6 +5,7 @@ import 'package:mc_application/mc_application.dart';
 import 'package:mc_design_system/mc_design_system.dart';
 import 'package:mc_domain/mc_domain.dart';
 import '../auth/auth_cubit.dart';
+import '../../app/theme_cubit.dart';
 import 'widgets/cart_panel.dart';
 import 'widgets/customer_selector.dart';
 import 'widgets/payment_method_selector.dart';
@@ -21,6 +22,8 @@ import '../../widgets/pos/pos_modal.dart';
 
 /// Pantalla principal del POS — flujo de venta.
 /// Layout adaptativo: mobile (1 col) / tablet (2 col).
+enum _SalePersistResult { synced, pending, rejected }
+
 class SaleScreen extends StatefulWidget {
   final List<CompletedSale> completedSales;
   final ValueChanged<CompletedSale> onSaleCompleted;
@@ -107,13 +110,31 @@ class _SaleScreenState extends State<SaleScreen> {
     Duration(hours: 1),
   ];
 
-  Future<void> _persistSale(PosSale sale, {int attempt = 0}) async {
+  Future<_SalePersistResult> _persistSale(
+    PosSale sale, {
+    int attempt = 0,
+  }) async {
     try {
       final salePort = context.read<SalePort>();
       await salePort.createSale(sale);
-      if (mounted) widget.onSaleSynced?.call(sale.id);
+      return _SalePersistResult.synced;
     } catch (e) {
-      if (!mounted) return;
+      // Un 4xx es un rechazo de negocio/validación (por ejemplo stock no
+      // inicializado), no una falla transitoria: no debe quedar en retry
+      // infinito ni aparecer como "pendiente sync".
+      if (_isPermanentSaleRejection(e)) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Venta rechazada: ${_extractErrorMessage(e)}'),
+              backgroundColor: McColors.error,
+            ),
+          );
+        }
+        return _SalePersistResult.rejected;
+      }
+
+      if (!mounted) return _SalePersistResult.pending;
       if (attempt == 0) {
         // Solo mostrar error en el primer intento
         final msg = _extractErrorMessage(e);
@@ -130,18 +151,32 @@ class _SaleScreenState extends State<SaleScreen> {
       Future.delayed(delay, () {
         if (mounted) _persistSale(sale, attempt: attempt + 1);
       });
+      return _SalePersistResult.pending;
     }
+  }
+
+  bool _isPermanentSaleRejection(Object e) {
+    if (e is! DioException) return false;
+    final statusCode = e.response?.statusCode;
+    // 408/429 son recuperables; el resto de 4xx requiere corregir la venta
+    // o sus datos antes de volver a enviarla.
+    return statusCode != null &&
+        statusCode >= 400 &&
+        statusCode < 500 &&
+        statusCode != 408 &&
+        statusCode != 429;
   }
 
   String _extractErrorMessage(Object e) {
     if (e is DioException) {
+      final statusCode = e.response?.statusCode;
+      if (statusCode == 409) return 'Stock insuficiente o no inicializado';
+      if (statusCode == 400) return 'Datos de venta inválidos';
       final data = e.response?.data;
       if (data is Map) {
         final serverMsg = data['error'] as String? ?? data['message'] as String?;
         if (serverMsg != null && serverMsg.isNotEmpty) return serverMsg;
       }
-      final statusCode = e.response?.statusCode;
-      if (statusCode == 409) return 'Stock insuficiente o no inicializado';
       if (statusCode == 502) return 'Error de comunicación con el servidor';
       if (statusCode == null) return 'Sin conexión. Verificá tu internet.';
     }
@@ -221,11 +256,11 @@ class _SaleScreenState extends State<SaleScreen> {
     );
   }
 
-  void _handleCheckoutComplete(
+  Future<void> _handleCheckoutComplete(
     Customer customer,
     PaymentMethod paymentMethod,
     Money amountPaid,
-  ) {
+  ) async {
     // Completar la venta con cliente y pago
     final paidSale = _sale
         .setCustomer(customer.id)
@@ -236,11 +271,22 @@ class _SaleScreenState extends State<SaleScreen> {
       customerName: customer.name,
       paymentMethodName: paymentMethod.name,
     );
+
+    // Esperar la primera respuesta evita mostrar "¡Cobrado!" para un rechazo
+    // de negocio. Los errores de red/5xx sí pasan a la cola local de retry.
+    final persistResult = await _persistSale(paidSale);
+    if (!mounted || persistResult == _SalePersistResult.rejected) return;
+
     widget.onSaleCompleted(completedSale);
-    _persistSale(paidSale); // fire-and-forget con snapshot de la venta
+    if (persistResult == _SalePersistResult.synced) {
+      // Mantener la semántica existente: la venta confirmada viene del
+      // backend y no debe quedar duplicada como venta local pendiente.
+      widget.onSaleSynced?.call(paidSale.id);
+    }
 
     // Capturar datos para SaleConfirmedScreen antes de limpiar estado
     final saleNumber = '${widget.completedSales.length}';
+    final saleId = paidSale.id;
     final totalAmount = paidSale.finalAmount.amount;
     final receivedAmount = amountPaid.amount;
     final methodName = paymentMethod.name;
@@ -257,6 +303,7 @@ class _SaleScreenState extends State<SaleScreen> {
       fullscreenDialog: true,
       builder: (_) => SaleConfirmedScreen(
         saleNumber: saleNumber,
+        saleId: saleId,
         total: totalAmount,
         received: receivedAmount,
         paymentMethodName: methodName,
@@ -284,14 +331,27 @@ class _SaleScreenState extends State<SaleScreen> {
   }
 
   Widget _buildAccountMenu() {
+    final isDark = context.watch<ThemeCubit>().state == ThemeMode.dark;
     return PopupMenuButton<String>(
       icon: const Icon(Icons.account_circle_outlined, color: McColors.textFg2),
       tooltip: 'Cuenta',
       onSelected: (value) {
         if (value == 'logout') _confirmLogout(context);
+        if (value == 'theme') context.read<ThemeCubit>().toggle();
       },
-      itemBuilder: (_) => const [
+      itemBuilder: (_) => [
         PopupMenuItem(
+          value: 'theme',
+          child: Row(
+            children: [
+              Icon(isDark ? Icons.light_mode_outlined : Icons.dark_mode_outlined,
+                  size: 20),
+              const SizedBox(width: 8),
+              Text(isDark ? 'Modo claro' : 'Modo oscuro'),
+            ],
+          ),
+        ),
+        const PopupMenuItem(
           value: 'logout',
           child: Row(
             children: [

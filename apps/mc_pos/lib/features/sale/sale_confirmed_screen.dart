@@ -2,10 +2,15 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:mc_design_system/mc_design_system.dart';
 import '../../widgets/pos/product_card_pos.dart' show fmtAR;
+import 'receipt/receipt_detail_screen.dart';
 
 /// Pantalla de confirmación de venta exitosa.
 class SaleConfirmedScreen extends StatelessWidget {
+  /// Número de comprobante legible que se muestra al cajero.
   final String saleNumber;
+
+  /// ID de la venta (UUID) — usado para abrir el detalle/imprimir.
+  final String saleId;
   final double total;
   final double received;
   final String paymentMethodName;
@@ -14,6 +19,7 @@ class SaleConfirmedScreen extends StatelessWidget {
   const SaleConfirmedScreen({
     super.key,
     required this.saleNumber,
+    required this.saleId,
     required this.total,
     required this.received,
     required this.paymentMethodName,
@@ -145,10 +151,8 @@ class SaleConfirmedScreen extends StatelessWidget {
                           Expanded(
                             child: OutlinedButton.icon(
                               onPressed: () {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(
-                                    content: Text('Impresión no disponible en este dispositivo'),
-                                  ),
+                                Navigator.of(context).push(
+                                  ReceiptDetailScreen.route(saleId),
                                 );
                               },
                               icon: const Icon(Icons.print_outlined, size: 18),

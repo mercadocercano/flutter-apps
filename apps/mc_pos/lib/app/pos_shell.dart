@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:mc_application/mc_application.dart';
 import 'package:mc_design_system/mc_design_system.dart';
+import 'theme_cubit.dart';
 import '../features/sale/sale_screen.dart';
 import '../features/sale/sales_history_screen.dart';
 import '../features/sale/cash_register_close_screen.dart';
@@ -178,10 +179,11 @@ class _PosBottomNav extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
     return Container(
-      decoration: const BoxDecoration(
-        color: Colors.white,
-        border: Border(top: BorderSide(color: Color(0xFFE2E8F0))),
+      decoration: BoxDecoration(
+        color: scheme.surface,
+        border: Border(top: BorderSide(color: scheme.outlineVariant)),
       ),
       child: SafeArea(
         top: false,
@@ -312,13 +314,53 @@ class _PosSidebar extends StatelessWidget {
 
             const Spacer(),
 
-            // ─── Divider + version hint ───
+            // ─── Divider + toggle de tema ───
             const Padding(
               padding: EdgeInsets.symmetric(horizontal: 16),
               child: Divider(color: Color(0x14FFFFFF), height: 1),
             ),
+            const SizedBox(height: 8),
+            const _SidebarThemeToggle(),
             const SizedBox(height: 12),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Toggle de tema para el sidebar navy del POS (tablet/desktop).
+class _SidebarThemeToggle extends StatelessWidget {
+  const _SidebarThemeToggle();
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = context.watch<ThemeCubit>().state == ThemeMode.dark;
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 10),
+      child: InkWell(
+        onTap: () => context.read<ThemeCubit>().toggle(),
+        borderRadius: BorderRadius.circular(8),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 9),
+          child: Row(
+            children: [
+              Icon(
+                isDark ? Icons.light_mode_outlined : Icons.dark_mode_outlined,
+                size: 15,
+                color: Colors.white.withValues(alpha: 0.5),
+              ),
+              const SizedBox(width: 9),
+              Text(
+                isDark ? 'Modo claro' : 'Modo oscuro',
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w500,
+                  color: Colors.white.withValues(alpha: 0.5),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );

@@ -3,36 +3,43 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:mc_application/mc_application.dart';
 import 'package:mc_design_system/mc_design_system.dart';
 import 'package:mc_infrastructure/mc_infrastructure.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'features/auth/auth_cubit.dart';
 import 'features/auth/auth_screen.dart';
 import 'features/quickstart/quickstart_cubit.dart';
 import 'features/quickstart/quickstart_screen.dart';
 import 'app/pos_shell.dart';
+import 'app/theme_cubit.dart';
 
-void main() {
+void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
+  final prefs = await SharedPreferences.getInstance();
   final storage = SecureSessionStorage();
   final authAdapter = AuthHttpAdapter(
     baseUrl: const String.fromEnvironment(
       'API_BASE_URL',
-      defaultValue: 'https://api.mercadocercano.com.ar',
+      defaultValue: 'http://localhost:8000',
     ),
     storage: storage,
   );
 
-  runApp(McPosApp(authPort: authAdapter));
+  runApp(McPosApp(authPort: authAdapter, prefs: prefs));
 }
 
 class McPosApp extends StatelessWidget {
   final AuthPort authPort;
+  final SharedPreferences prefs;
 
-  const McPosApp({super.key, required this.authPort});
+  const McPosApp({super.key, required this.authPort, required this.prefs});
 
   @override
   Widget build(BuildContext context) {
-    return BlocProvider(
-      create: (_) => AuthCubit(authPort)..checkSession(),
+    return MultiBlocProvider(
+      providers: [
+        BlocProvider(create: (_) => AuthCubit(authPort)..checkSession()),
+        BlocProvider(create: (_) => ThemeCubit(prefs)),
+      ],
       child: const _McPosRoot(),
     );
   }
@@ -56,7 +63,7 @@ class _McPosRootState extends State<_McPosRoot> {
     _httpClient = McHttpClient(
       baseUrl: const String.fromEnvironment(
         'API_BASE_URL',
-        defaultValue: 'https://api.mercadocercano.com.ar',
+        defaultValue: 'http://localhost:8000',
       ),
       sessionProvider: authCubit,
     );
@@ -77,12 +84,14 @@ class _McPosRootState extends State<_McPosRoot> {
         if (state is! AuthSuccess) setState(_disposeClient);
       },
       builder: (context, state) {
+        final themeMode = context.watch<ThemeCubit>().state;
         if (state is! AuthSuccess) {
           return MaterialApp(
             title: 'MC POS',
             debugShowCheckedModeBanner: false,
             theme: McTheme.light,
             darkTheme: McTheme.dark,
+            themeMode: themeMode,
             home: const AuthScreen(),
           );
         }
@@ -117,6 +126,22 @@ class _McPosRootState extends State<_McPosRoot> {
             RepositoryProvider<TenantConfigPort>(
               create: (_) => TenantConfigHttpAdapter(httpClient),
             ),
+            // ─── Impresora térmica (opcional, según dispositivo) ───
+            // El POS elige el formato del comprobante según haya o no un
+            // PrinterPort registrado: si existe → botón "Ticket" (ESC/POS);
+            // si no → "Imprimir PDF A4" (ReceiptDetailScreen lo resuelve con
+            // un try/catch sobre context.read<PrinterPort>()).
+            //
+            // TODO(E18-TramoC): registrar BluetoothThermalPrinterAdapter cuando
+            // exista la pantalla de emparejamiento (discoverDevices + connect)
+            // y la preferencia de ancho (58/80mm) en settings del tenant.
+            // Ejemplo de activación:
+            //   RepositoryProvider<PrinterPort>(
+            //     create: (_) => BluetoothThermalPrinterAdapter(
+            //       storeName: 'Mi Comercio',
+            //       paperWidth: ThermalPaperWidth.mm58,
+            //     ),
+            //   ),
           ],
           child: BlocProvider(
             create: (_) => QuickstartCubit(catalogAdapter)..checkIfNeeded(),
@@ -125,6 +150,7 @@ class _McPosRootState extends State<_McPosRoot> {
               debugShowCheckedModeBanner: false,
               theme: McTheme.light,
               darkTheme: McTheme.dark,
+              themeMode: themeMode,
               home: const _QuickstartGate(),
             ),
           ),

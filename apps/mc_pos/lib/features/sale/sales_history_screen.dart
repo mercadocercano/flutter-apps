@@ -6,6 +6,7 @@ import 'package:mc_design_system/mc_design_system.dart';
 import 'package:mc_domain/mc_domain.dart';
 import '../../widgets/pos/pos_top_bar.dart';
 import '../../widgets/pos/product_card_pos.dart' show fmtAR;
+import 'receipt/receipt_detail_screen.dart';
 
 /// Historial de ventas — carga del backend + muestra ventas locales de la sesión.
 class SalesHistoryScreen extends StatefulWidget {
@@ -316,6 +317,27 @@ class _RemoteSaleCardState extends State<_RemoteSaleCard> {
                               ],
                             ),
                           )),
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(
+                          McSpacing.md,
+                          McSpacing.xs,
+                          McSpacing.md,
+                          McSpacing.md,
+                        ),
+                        child: SizedBox(
+                          width: double.infinity,
+                          child: OutlinedButton.icon(
+                            onPressed: () => Navigator.of(context).push(
+                              ReceiptDetailScreen.route(sale.id),
+                            ),
+                            icon: const Icon(Icons.receipt_long, size: 16),
+                            label: const Text('Ver comprobante'),
+                            style: OutlinedButton.styleFrom(
+                              foregroundColor: McColors.primary,
+                            ),
+                          ),
+                        ),
+                      ),
                     ],
                   ),
                 ),

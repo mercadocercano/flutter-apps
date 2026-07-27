@@ -1,39 +1,33 @@
-<!-- 
-This README describes the package. If you publish this package to pub.dev,
-this README's contents appear on the landing page for your package.
+# mc_hardware
 
-For information about how to write a good package README, see the guide for
-[writing package pages](https://dart.dev/tools/pub/writing-package-pages). 
+Adaptadores de hardware comercial para Mercado Cercano. Implementan los **ports**
+definidos en `mc_application` (`PrinterPort`, `ScannerPort`, `ScalePort`), de modo
+que la app (presentación/dominio) nunca depende de un plugin de hardware concreto.
 
-For general information about developing packages, see the Dart guide for
-[creating packages](https://dart.dev/guides/libraries/create-packages)
-and the Flutter guide for
-[developing packages and plugins](https://flutter.dev/to/develop-packages). 
--->
+## Impresora térmica (ESC/POS)
 
-TODO: Put a short description of the package here that helps potential users
-know whether this package might be useful for them.
+Implementado en `src/printer/`:
 
-## Features
+- **`EscPosReceiptFormatter`** — convierte un `ReceiptData` (dominio) en bytes
+  ESC/POS. Toda la lógica de formato del ticket (ancho 58/80mm, alineación,
+  totales, vuelto) vive acá, desacoplada del transporte.
+- **`BluetoothThermalPrinterAdapter`** — implementa `PrinterPort` sobre Bluetooth
+  clásico (SPP).
+- **`receiptDataFromSale`** — mapea `SaleReceipt` (dominio) → `ReceiptData` (port).
 
-TODO: List what your package can do. Maybe include images, gifs, or videos.
+### Decisión de librería
 
-## Getting started
+| Concern | Librería elegida | Por qué |
+|---------|------------------|---------|
+| Formato ESC/POS | **`esc_pos_utils_plus`** | Fork mantenido (Dart 3 / null-safety) del abandonado `esc_pos_utils`. Genera bytes con `Generator` + `CapabilityProfile`, soporta `PaperSize.mm58/mm80`, `row`/`PosColumn` para columnas. |
+| Transporte | **`print_bluetooth_thermal`** | Bluetooth clásico (SPP), que es el estándar de las impresoras térmicas económicas usadas en comercios de barrio. `esc_pos_printer` solo cubre impresoras de red (WiFi/Ethernet), poco habituales en este segmento. |
 
-TODO: List prerequisites and provide or point to information on how to
-start using the package.
+Como el formato y el transporte están separados (formatter vs adapter) y todo se
+expone detrás de `PrinterPort`, se puede agregar un adapter WiFi/USB más adelante
+sin tocar presentación ni dominio.
 
-## Usage
+## Pendiente
 
-TODO: Include short and useful examples for package users. Add longer examples
-to `/example` folder. 
-
-```dart
-const like = 'sample';
-```
-
-## Additional information
-
-TODO: Tell users more about the package: where to find more information, how to 
-contribute to the package, how to file issues, what response they can expect 
-from the package authors, and more.
+- Pantalla de emparejamiento (`discoverDevices` + `connect`) y preferencia de
+  ancho de papel (58/80mm) en settings del tenant — ver TODO en `mc_pos/main.dart`.
+- Scanner y balanza (ports ya definidos, adapters sin implementar).

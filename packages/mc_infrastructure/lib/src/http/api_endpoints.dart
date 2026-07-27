@@ -27,6 +27,9 @@ abstract final class ApiEndpoints {
   static const posSales = '/sales/api/v1/sales/pos';
   static String posSale(String id) => '/sales/api/v1/sales/pos/$id';
 
+  /// PDF A4 del comprobante (lo genera el backend — E18 Tramo C).
+  static String posSalePdf(String id) => '/sales/api/v1/sales/pos/$id/pdf';
+
   // ─── Stock ───
   static const stockEntries = '/stock/api/v1/stock-entries';
   static const stockAvailability = '/stock/api/v1/availability';

@@ -81,11 +81,6 @@ class _BrandsScreenState extends State<BrandsScreen> {
                   onCreateTap: () => context.push('/pim/brands/new'),
                   columns: [
                     AdminColumn<MarketplaceBrand>(
-                      label: 'Logo',
-                      width: 60,
-                      builder: (item) => _BrandLogo(logoUrl: item.logoUrl),
-                    ),
-                    AdminColumn<MarketplaceBrand>(
                       label: 'Nombre',
                       builder: (item) => _BrandName(brand: item),
                     ),
@@ -220,41 +215,6 @@ class _BrandName extends StatelessWidget {
               ?.copyWith(color: Colors.grey[600]),
         ),
       ],
-    );
-  }
-}
-
-class _BrandLogo extends StatelessWidget {
-  final String? logoUrl;
-  const _BrandLogo({this.logoUrl});
-
-  @override
-  Widget build(BuildContext context) {
-    if (logoUrl == null || logoUrl!.isEmpty) {
-      return Container(
-        width: 40,
-        height: 40,
-        decoration: BoxDecoration(
-          color: Colors.grey[200],
-          borderRadius: BorderRadius.circular(6),
-        ),
-        child: const Icon(Icons.image_outlined, size: 20, color: Colors.grey),
-      );
-    }
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(6),
-      child: Image.network(
-        logoUrl!,
-        width: 40,
-        height: 40,
-        fit: BoxFit.contain,
-        errorBuilder: (context, error, stack) => Container(
-          width: 40,
-          height: 40,
-          color: Colors.grey[200],
-          child: const Icon(Icons.broken_image_outlined, size: 20),
-        ),
-      ),
     );
   }
 }

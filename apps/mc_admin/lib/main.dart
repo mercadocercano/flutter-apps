@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import 'core/api/auth_helper.dart';
 import 'core/api/kong_client.dart';
 import 'core/navigation/app_router.dart';
 import 'core/themes/app_theme.dart';
+import 'core/themes/theme_cubit.dart';
 import 'features/brands/data/brands_repository.dart';
 import 'features/brands/presentation/bloc/brands_bloc.dart';
 import 'features/categories/data/categories_repository.dart';
@@ -20,11 +22,14 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   // Restaura sesión persistida antes de renderizar la UI
   await AuthHelper.init();
-  runApp(const McAdminApp());
+  final prefs = await SharedPreferences.getInstance();
+  runApp(McAdminApp(prefs: prefs));
 }
 
 class McAdminApp extends StatelessWidget {
-  const McAdminApp({super.key});
+  final SharedPreferences prefs;
+
+  const McAdminApp({super.key, required this.prefs});
 
   @override
   Widget build(BuildContext context) {
@@ -59,14 +64,19 @@ class McAdminApp extends StatelessWidget {
         BlocProvider<DevMetricsBloc>(
           create: (_) => DevMetricsBloc(repository: devMetricsRepo),
         ),
+        BlocProvider<ThemeCubit>(
+          create: (_) => ThemeCubit(prefs),
+        ),
       ],
-      child: MaterialApp.router(
-        title: 'MC Admin',
-        debugShowCheckedModeBanner: false,
-        theme: AppTheme.light(),
-        darkTheme: AppTheme.dark(),
-        themeMode: ThemeMode.light,
-        routerConfig: AppRouter.router,
+      child: BlocBuilder<ThemeCubit, ThemeMode>(
+        builder: (context, themeMode) => MaterialApp.router(
+          title: 'MC Admin',
+          debugShowCheckedModeBanner: false,
+          theme: AppTheme.light(),
+          darkTheme: AppTheme.dark(),
+          themeMode: themeMode,
+          routerConfig: AppRouter.router,
+        ),
       ),
     );
   }

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:mc_design_system/mc_design_system.dart';
 
 import '../../../../core/api/kong_client.dart';
 import '../../../../core/api/auth_helper.dart';
@@ -74,31 +75,36 @@ class _LoginScreenState extends State<LoginScreen> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     return Scaffold(
-      body: Center(
+      // Fondo "mapa del barrio" con pines animados. Drop-in de la imagen final:
+      // descomentar mapImage cuando esté en assets/images/ (ver README ahí).
+      body: McLoginBackground(
+        // mapImage: const AssetImage('assets/images/login_map.webp'),
+        child: Center(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(32),
           child: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 400),
-            child: Form(
+            child: Container(
+              padding: const EdgeInsets.all(28),
+              decoration: BoxDecoration(
+                color: theme.colorScheme.surface,
+                borderRadius: BorderRadius.circular(16),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.18),
+                    blurRadius: 30,
+                    offset: const Offset(0, 12),
+                  ),
+                ],
+              ),
+              child: Form(
               key: _formKey,
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  // Logo
-                  Center(
-                    child: Container(
-                      width: 48,
-                      height: 48,
-                      decoration: BoxDecoration(
-                        color: theme.colorScheme.primary,
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: const Icon(
-                        Icons.storefront_outlined,
-                        color: Colors.white,
-                        size: 28,
-                      ),
-                    ),
+                  // Logo de marca (sobre la Card blanca, sin badge).
+                  const Center(
+                    child: McBrandLogo(size: 76),
                   ),
                   const SizedBox(height: 16),
                   Text(
@@ -190,8 +196,10 @@ class _LoginScreenState extends State<LoginScreen> {
                 ],
               ),
             ),
+            ),
           ),
         ),
+      ),
       ),
     );
   }

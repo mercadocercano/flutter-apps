@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:mc_design_system/mc_design_system.dart';
 
 import '../api/auth_helper.dart';
+import '../themes/theme_cubit.dart';
 
 /// Layout principal de mc_admin: sidebar izquierdo + área de contenido.
 /// Sidebar colapsable en pantallas < 1024px (drawer).
@@ -34,6 +36,7 @@ class _AdminShellState extends State<AdminShell> {
               onPressed: () => Scaffold.of(ctx).openDrawer(),
             ),
           ),
+          actions: const [_ThemeToggleButton()],
         ),
         drawer: Drawer(
           child: _SidebarContent(currentLocation: location),
@@ -305,7 +308,8 @@ class _SidebarContentState extends State<_SidebarContent> {
             ),
           ),
           const Divider(height: 1),
-          // Footer: logout
+          // Footer: toggle de tema + logout
+          _ThemeToggleTile(collapsed: widget.collapsed),
           _LogoutTile(collapsed: widget.collapsed),
         ],
       ),
@@ -531,6 +535,59 @@ class _NavItem extends StatelessWidget {
           ),
         ),
       ),
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+
+/// Tile del sidebar para alternar claro/oscuro. Reactivo al ThemeCubit.
+class _ThemeToggleTile extends StatelessWidget {
+  final bool collapsed;
+
+  const _ThemeToggleTile({required this.collapsed});
+
+  @override
+  Widget build(BuildContext context) {
+    final c = Theme.of(context).colorScheme;
+    final isDark = context.watch<ThemeCubit>().state == ThemeMode.dark;
+    final icon = isDark ? Icons.light_mode_outlined : Icons.dark_mode_outlined;
+    final label = isDark ? 'Modo claro' : 'Modo oscuro';
+
+    if (collapsed) {
+      return Padding(
+        padding: const EdgeInsets.fromLTRB(8, 8, 8, 0),
+        child: Tooltip(
+          message: label,
+          child: IconButton(
+            icon: Icon(icon, size: 20, color: c.onSurfaceVariant),
+            onPressed: () => context.read<ThemeCubit>().toggle(),
+          ),
+        ),
+      );
+    }
+    return ListTile(
+      leading: Icon(icon, color: c.onSurfaceVariant, size: 18),
+      title: Text(label, style: const TextStyle(fontSize: 14)),
+      onTap: () => context.read<ThemeCubit>().toggle(),
+      dense: true,
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+
+/// Botón de toggle para el AppBar (modo narrow).
+class _ThemeToggleButton extends StatelessWidget {
+  const _ThemeToggleButton();
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = context.watch<ThemeCubit>().state == ThemeMode.dark;
+    return IconButton(
+      icon: Icon(isDark ? Icons.light_mode_outlined : Icons.dark_mode_outlined),
+      tooltip: isDark ? 'Modo claro' : 'Modo oscuro',
+      onPressed: () => context.read<ThemeCubit>().toggle(),
     );
   }
 }
